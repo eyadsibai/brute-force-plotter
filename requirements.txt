@@ -1,4 +1,4 @@
-matplotlib
-click
-pandas
-seaborn
+matplotlib==1.4.3
+click==4.0
+pandas==0.16.0
+git+git://github.com/mwaskom/seaborn.git
