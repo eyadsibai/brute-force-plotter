@@ -7,6 +7,7 @@ Installation
 ------------
 
 
+
 To Try for Now
 --------------
 clone the repo and then:
@@ -15,6 +16,9 @@ clone the repo and then:
 	
 	$ PYTHONPATH=brute_force_plotter python3 brute_force_plotter/brute_force_plotter.py example/titanic.csv example/titanic_dtypes.json example/output
 
+- the first argument is the input file (csv file with data) (example/titanic.csv)
+- second argument is a json file with the data types of each columns (c for category/ n for numeric/ i for ignore) (example/titanic_dtypes.json)
+- third argument is the output directory
 
 TODO
 ----
