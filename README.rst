@@ -5,15 +5,16 @@ Tool to visualize data quickly with no brain usage for plots creation
 
 Installation
 ------------
-
+Note yet tested
 
 
 To Try for Now
 --------------
-clone the repo and then:
-
 .. code:: bash
-	
+
+	$ git clone https://github.com/eyadsibai/brute_force_plotter.git
+	$ cd brute_force_plotter
+	$ pip3 install -r requirements.txt
 	$ PYTHONPATH=brute_force_plotter python3 brute_force_plotter/brute_force_plotter.py example/titanic.csv example/titanic_dtypes.json example/output
 
 - the first argument is the input file (csv file with data) (example/titanic.csv)
