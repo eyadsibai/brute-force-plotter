@@ -1,0 +1,4 @@
+matplotlib
+click
+pandas
+seaborn

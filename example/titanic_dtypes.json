@@ -1,0 +1,14 @@
+{
+  "Survived": "c",
+  "Pclass": "c",
+  "Sex": "c",
+  "Age": "n",
+  "SibSp": "n",
+  "Parch": "n",
+  "Fare": "n",
+  "Embarked": "c",
+  "PassengerId": "i",
+  "Ticket": "i",
+  "Cabin": "i",
+  "Name": "i"
+}
