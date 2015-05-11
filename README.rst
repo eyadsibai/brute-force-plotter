@@ -5,7 +5,7 @@ Tool to visualize data quickly with no brain usage for plots creation
 
 Installation
 ------------
-Note yet tested
+Not yet tested
 
 
 To Try for Now
@@ -25,6 +25,7 @@ TODO
 ----
 - Clean up part of the code
 - More documentation
+- Tests?
 - Support 3 variables (contour plots/ etc)
 - Fallback for large datasets
 - Figure out the data type or suggest some
