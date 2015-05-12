@@ -33,4 +33,4 @@ def bar_box_violin_dot_plots(data, category_col, numeric_col, axes,
 
 @ignore_if_exist_or_save
 def heatmap(data, file_name=None):
-    sns.heatmap(data=data, annot=True)
+    sns.heatmap(data=data, annot=True, fmt="d", cmap="coolwarm")
