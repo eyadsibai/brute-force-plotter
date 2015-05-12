@@ -1,11 +1,11 @@
 Brute Force Plotter
 ===================
 [Work in progress]
-Tool to visualize data quickly with no brain usage for plots creation
+Tool to visualize data quickly with no brain usage for plot creation
 
 Installation
 ------------
-Not yet tested
+will be packaged soon
 
 
 To Try for Now
