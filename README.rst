@@ -8,8 +8,8 @@ Installation
 will be packaged soon
 
 
-To Try for Now
---------------
+Example
+-------
 It was tested on python3 only
 
 .. code:: bash
@@ -40,9 +40,40 @@ It was tested on python3 only
 
 - third argument is the output directory
 
+
+.. image:: https://raw.githubusercontent.com/eyadsibai/brute_force_plotter/master/example/output/distributions/Age-dist-plot.png
+    :alt: Age Distribution (Histogram with Kernel Density Estimation, Violin Plot)
+    :width: 260
+    :height: 300
+    :align: center
+    
+.. image:: https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Pclass-Sex-heatmap.png
+    :alt: Heatmap for Sex and Pclass
+    :width: 260
+    :height: 300
+    :align: center
+
+.. image:: https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Pclass-Survived-bar-plot.png
+    :alt: Pclass vs Survived
+    :width: 260
+    :height: 300
+    :align: center    
+    
+.. image:: https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Survived-Age-plot.png
+    :alt: Survived vs Age
+    :width: 260
+    :height: 300
+    :align: center
+    
+.. image:: https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Age-Fare-scatter-plot.png
+    :alt: Age vs Fare
+    :width: 260
+    :height: 300
+    :align: center
+
 TODO
 ----
-- taget variable support
+- target variable support
 - Clean up part of the code
 - More documentation
 - Tests?
