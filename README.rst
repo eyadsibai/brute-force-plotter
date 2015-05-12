@@ -42,6 +42,7 @@ It was tested on python3 only
 
 TODO
 ----
+- taget variable support
 - Clean up part of the code
 - More documentation
 - Tests?
@@ -49,4 +50,5 @@ TODO
 - Fallback for large datasets
 - Figure out the data type or suggest some
 - Map visualization (if geocoordinates)
+- Minimize the number of plots
 - Support for Time Series
