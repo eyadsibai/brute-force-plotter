@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 @click.argument('input-file')
 @click.argument('dtypes')
 @click.argument('output-path')
-def main(input_file, dtypes, output_path, verbose):
+def main(input_file, dtypes, output_path):
     """Create Plots From data in input"""
 
     data = pd.read_csv(input_file)
