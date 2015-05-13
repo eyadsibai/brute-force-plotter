@@ -11,12 +11,12 @@ def ignore_if_exist_or_save(func):
         file_name = kwargs['file_name']
 
         if os.path.isfile(file_name):
-            plt.close(plt.gcf())
+            plt.close('all')
         else:
             func(*args, **kwargs)
             plt.gcf().set_tight_layout(True)
             plt.gcf().savefig(file_name, dpi=120)
-            plt.close(plt.gcf())
+            plt.close('all')
 
     return wrapper
 
