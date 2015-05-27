@@ -101,7 +101,7 @@ def create_plots(df, dtypes, output_path):
 
     for (col1, dtype1), (col2, dtype2) in combinations(dtypes.items(), 2):
         print(col1, col2)
-        if any(col in ignore for col in dtypes.keys()):
+        if any(col in ignore for col in [dtype1, dtype2]):
             continue
         if dtype1 == 'n' and dtype2 == 'n':
             plot_numeric_numeric(data, col1, col2,
