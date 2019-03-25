@@ -1,24 +1,47 @@
-# coding=utf-8
-from itertools import chain, combinations
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Brute Force Plotter
+-----------------
+Command Line Interface
+
+"""
+
+from __future__ import unicode_literals
+
+import errno
+import json
+import logging
+import math
 import os
 
-import pandas as pd
+# coding=utf-8
+from itertools import chain, combinations
+
+import click
 import matplotlib
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+logger = logging.getLogger(__name__)
+
+
+@click.command()
+@click.argument("input-file")
+@click.argument("dtypes")
+@click.argument("output-path")
+def main(input_file, dtypes, output_path):
+    """Create Plots From data in input"""
+
+    data = pd.read_csv(input_file)
+
+    data_types = json.load(open(dtypes, "r"))
+    create_plots(data, data_types, output_path)
 
 
 matplotlib.use("agg")
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-from plot_types import (
-    bar_plot,
-    scatter_plot,
-    histogram_violin_plots,
-    bar_box_violin_dot_plots,
-    heatmap,
-)
-from utils import make_sure_path_exists
 
 
 ignore = set()
@@ -27,6 +50,32 @@ sns.set_style("darkgrid")
 sns.set_context("paper")
 
 sns.set(rc={"figure.figsize": (8, 6)})
+
+
+def ignore_if_exist_or_save(func):
+    def wrapper(*args, **kwargs):
+
+        file_name = kwargs["file_name"]
+
+        if os.path.isfile(file_name):
+            plt.close("all")
+        else:
+            func(*args, **kwargs)
+            plt.gcf().set_tight_layout(True)
+            plt.gcf().savefig(file_name, dpi=120)
+            plt.close("all")
+
+    return wrapper
+
+
+def make_sure_path_exists(path):
+    logging.debug("Make sure {} exists".format(path))
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            return False
+    return True
 
 
 def plot_single_numeric(df, col, path):
@@ -172,3 +221,83 @@ def _create_directories(output_path):
 # sns.corrplot(df, cmap_range='full')
 # plt.savefig(file_path, dpi=120)
 # plt.close()
+
+
+def autolabel(rects):
+    for rect in rects:
+        height = rect.get_height()
+        width = rect.get_width()
+
+        if math.isnan(height):
+            height = 0.0
+        if (height, width) == (1.0, 1.0):
+            continue
+        plt.text(
+            rect.get_x() + width / 2.0,
+            1.0 + height,
+            "%d" % int(height),
+            ha="center",
+            va="bottom",
+        )
+
+
+@ignore_if_exist_or_save
+def histogram_violin_plots(data, axes, file_name=None):
+    # histogram
+    sns.distplot(data, ax=axes[0], axlabel="")
+    sns.violinplot(data, ax=axes[1], inner="quartile", scale="count")
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def bar_plot(data, col, hue=None, file_name=None):
+    sns.countplot(col, hue=hue, data=data.sort_values(col))
+    sns.despine(left=True)
+
+    subplots = [
+        x for x in plt.gcf().get_children() if isinstance(x, matplotlib.axes.Subplot)
+    ]
+    for plot in subplots:
+        rectangles = [
+            x
+            for x in plot.get_children()
+            if isinstance(x, matplotlib.patches.Rectangle)
+        ]
+    autolabel(rectangles)
+
+
+@ignore_if_exist_or_save
+def scatter_plot(data, col1, col2, file_name=None):
+    sns.regplot(x=col1, y=col2, data=data, fit_reg=False)
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def bar_box_violin_dot_plots(data, category_col, numeric_col, axes, file_name=None):
+    sns.barplot(category_col, numeric_col, data=data, ax=axes[0])
+    sns.boxplot(
+        category_col, numeric_col, data=data[data[numeric_col].notnull()], ax=axes[2]
+    )
+    sns.violinplot(
+        category_col,
+        numeric_col,
+        data=data,
+        kind="violin",
+        inner="quartile",
+        scale="count",
+        split=True,
+        ax=axes[3],
+    )
+    sns.stripplot(category_col, numeric_col, data=data, jitter=True, ax=axes[1])
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def heatmap(data, file_name=None):
+    cmap = "BuGn" if (data.values >= 0).all() else "coolwarm"
+    sns.heatmap(data=data, annot=True, fmt="d", cmap=cmap)
+    sns.despine(left=True)
+
+
+if __name__ == "__main__":
+    main()

@@ -17,7 +17,7 @@ It was tested on python3 only
 	$ git clone https://github.com/eyadsibai/brute_force_plotter.git
 	$ cd brute_force_plotter
 	$ pip3 install -r requirements.txt
-	$ PYTHONPATH=brute_force_plotter python3 brute_force_plotter/brute_force_plotter.py example/titanic.csv example/titanic_dtypes.json example/output
+	$ python3 brute_force_plotter.py example/titanic.csv example/titanic_dtypes.json example/output
 - json.dump({k:v.name for k,v in df.dtypes.to_dict().items()},open('dtypes.json','w'))  
 - the first argument is the input file (csv file with data) `example/titanic.csv <https://github.com/eyadsibai/brute_force_plotter/example/titanic.csv>`_
 - second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) `example/titanic_dtypes.json <https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json>`_
@@ -39,6 +39,7 @@ It was tested on python3 only
 	}	
 
 - third argument is the output directory
+- c stands for category, i stands for ignore, n for numeric
 
 
 .. image:: https://raw.githubusercontent.com/eyadsibai/brute_force_plotter/master/example/output/distributions/Age-dist-plot.png
