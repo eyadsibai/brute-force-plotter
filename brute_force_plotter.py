@@ -69,7 +69,7 @@ def ignore_if_exist_or_save(func):
 
 
 def make_sure_path_exists(path):
-    logging.debug("Make sure {} exists".format(path))
+    logging.debug(f"Make sure {path} exists")
     try:
         os.makedirs(path)
     except OSError as e:
@@ -107,7 +107,7 @@ def plot_single_numeric(df, col, path):
 
 
 def plot_single_category(df, col, path):
-    value_counts = df[col].value_counts()
+    value_counts = df[col].value_counts(dropna=False)
     # if the categories are more than 50 then this should be ignored
     # TODO find a better way to visualize this
     if len(value_counts) > 50:
@@ -120,22 +120,22 @@ def plot_single_category(df, col, path):
 def plot_category_category(df, col1, col2, path):
     if len(df[col1].unique()) < len(df[col2].unique()):
         col1, col2 = col2, col1
-    file_name = os.path.join(path, col1 + "-" + col2 + "-bar-plot.png")
+    file_name = os.path.join(path, f"{col1}-{col2}-bar-plot.png")
     bar_plot(df, col1, hue=col2, file_name=file_name)
 
-    file_name = os.path.join(path, col1 + "-" + col2 + "-heatmap.png")
+    file_name = os.path.join(path, f"{col1}-{col2}-heatmap.png")
     heatmap(pd.crosstab(df[col1], df[col2]), file_name=file_name)
 
 
 def plot_numeric_numeric(df, col1, col2, path):
-    file_name = os.path.join(path, col1 + "-" + col2 + "-scatter-plot.png")
+    file_name = os.path.join(path, f"{col1}-{col2}-scatter-plot.png")
     scatter_plot(df, col1, col2, file_name=file_name)
 
 
 def plot_category_numeric(df, category_col, numeric_col, path):
     f, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
     axes = list(chain.from_iterable(axes))
-    file_name = os.path.join(path, category_col + "-" + numeric_col + "-plot.png")
+    file_name = os.path.join(path, f"{category_col}-{numeric_col}-plot.png")
     bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
 
