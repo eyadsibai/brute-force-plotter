@@ -6,26 +6,31 @@ import pandas as pd
 import matplotlib
 
 
-matplotlib.use('agg')
+matplotlib.use("agg")
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from plot_types import bar_plot, scatter_plot, \
-    histogram_violin_plots, bar_box_violin_dot_plots, heatmap
+from plot_types import (
+    bar_plot,
+    scatter_plot,
+    histogram_violin_plots,
+    bar_box_violin_dot_plots,
+    heatmap,
+)
 from utils import make_sure_path_exists
 
 
 ignore = set()
 
-sns.set_style('darkgrid')
+sns.set_style("darkgrid")
 sns.set_context("paper")
 
 sns.set(rc={"figure.figsize": (8, 6)})
 
 
 def plot_single_numeric(df, col, path):
-    file_name = os.path.join(path, col + '-dist-plot.png')
+    file_name = os.path.join(path, col + "-dist-plot.png")
     data = df[col].dropna()
     f, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
     histogram_violin_plots(data, axes, file_name=file_name)
@@ -59,62 +64,56 @@ def plot_single_category(df, col, path):
     if len(value_counts) > 50:
         ignore.add(col)
     else:
-        file_name = os.path.join(path, col + '-bar-plot.png')
+        file_name = os.path.join(path, col + "-bar-plot.png")
         bar_plot(df, col, file_name=file_name)
 
 
 def plot_category_category(df, col1, col2, path):
     if len(df[col1].unique()) < len(df[col2].unique()):
         col1, col2 = col2, col1
-    file_name = os.path.join(path, col1 + '-' + col2 + '-bar-plot.png')
+    file_name = os.path.join(path, col1 + "-" + col2 + "-bar-plot.png")
     bar_plot(df, col1, hue=col2, file_name=file_name)
 
-    file_name = os.path.join(path, col1 + '-' + col2 + '-heatmap.png')
+    file_name = os.path.join(path, col1 + "-" + col2 + "-heatmap.png")
     heatmap(pd.crosstab(df[col1], df[col2]), file_name=file_name)
 
 
 def plot_numeric_numeric(df, col1, col2, path):
-    file_name = os.path.join(path, col1 + '-' + col2 + '-scatter-plot.png')
+    file_name = os.path.join(path, col1 + "-" + col2 + "-scatter-plot.png")
     scatter_plot(df, col1, col2, file_name=file_name)
 
 
 def plot_category_numeric(df, category_col, numeric_col, path):
-    f, axes = plt.subplots(2, 2, sharex='col', sharey='row',
-                           figsize=(8, 6))
+    f, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
     axes = list(chain.from_iterable(axes))
-    file_name = os.path.join(
-        path, category_col + '-' + numeric_col + '-plot.png')
-    bar_box_violin_dot_plots(df, category_col, numeric_col, axes,
-                             file_name=file_name)
+    file_name = os.path.join(path, category_col + "-" + numeric_col + "-plot.png")
+    bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
 
 def create_plots(df, dtypes, output_path):
     data = df[list(dtypes.keys())]
-    distributions_path, two_d_interactions_path, three_d_interactions_path = \
-        _create_directories(output_path)
+    distributions_path, two_d_interactions_path, three_d_interactions_path = _create_directories(
+        output_path
+    )
     for col, dtype in dtypes.items():
         print(col)
-        if dtype == 'n':
+        if dtype == "n":
             plot_single_numeric(data, col, distributions_path)
-        if dtype == 'c':
+        if dtype == "c":
             plot_single_category(data, col, distributions_path)
 
     for (col1, dtype1), (col2, dtype2) in combinations(dtypes.items(), 2):
         print(col1, col2)
         if any(col in ignore for col in [dtype1, dtype2]):
             continue
-        if dtype1 == 'n' and dtype2 == 'n':
-            plot_numeric_numeric(data, col1, col2,
-                                 two_d_interactions_path)
-        if dtype1 == 'c' and dtype2 == 'c':
-            plot_category_category(data, col1, col2,
-                                   two_d_interactions_path)
-        if dtype1 == 'c' and dtype2 == 'n':
-            plot_category_numeric(data, col1, col2,
-                                  two_d_interactions_path)
-        if dtype1 == 'n' and dtype2 == 'c':
-            plot_category_numeric(data, col2, col1,
-                                  two_d_interactions_path)
+        if dtype1 == "n" and dtype2 == "n":
+            plot_numeric_numeric(data, col1, col2, two_d_interactions_path)
+        if dtype1 == "c" and dtype2 == "c":
+            plot_category_category(data, col1, col2, two_d_interactions_path)
+        if dtype1 == "c" and dtype2 == "n":
+            plot_category_numeric(data, col1, col2, two_d_interactions_path)
+        if dtype1 == "n" and dtype2 == "c":
+            plot_category_numeric(data, col2, col1, two_d_interactions_path)
 
             # for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
             # dtypes.items(), 3):
@@ -151,9 +150,9 @@ def create_plots(df, dtypes, output_path):
 
 
 def _create_directories(output_path):
-    distribution_path = os.path.join(output_path, 'distributions')
-    two_d_interaction_path = os.path.join(output_path, '2d_interactions')
-    three_d_interaction_path = os.path.join(output_path, '3d_interactions')
+    distribution_path = os.path.join(output_path, "distributions")
+    two_d_interaction_path = os.path.join(output_path, "2d_interactions")
+    three_d_interaction_path = os.path.join(output_path, "3d_interactions")
 
     make_sure_path_exists(distribution_path)
     make_sure_path_exists(two_d_interaction_path)
