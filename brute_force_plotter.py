@@ -38,6 +38,7 @@ sns.set_context("paper")
 
 sns.set(rc={"figure.figsize": (8, 6)})
 
+
 @click.command()
 @click.argument("input-file")
 @click.argument("dtypes")
@@ -53,8 +54,6 @@ def main(input_file, dtypes, output_path):
     plots = create_plots(new_file_name, data_types, output_path)
     with ProgressBar():
         dask.compute(*plots, scheduler="processes", n_workers=22)
-
-
 
 
 def ignore_if_exist_or_save(func):
@@ -74,7 +73,7 @@ def ignore_if_exist_or_save(func):
 
 
 def make_sure_path_exists(path):
-    logging.debug(f"Make sure {path} exists")
+    logger.debug(f"Make sure {path} exists")
     try:
         os.makedirs(path)
     except OSError as e:

@@ -1,4 +1,4 @@
 matplotlib==3.0.3
-click=7.0
+click==7.0
 pandas==0.24.2
 seaborn==0.9.0
