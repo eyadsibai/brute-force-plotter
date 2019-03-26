@@ -84,14 +84,9 @@ def make_sure_path_exists(path):
 
 
 @dask.delayed
-<<<<<<< HEAD
-def plot_single_numeric(df, col, path):
-    file_name = os.path.join(path, col + "-dist-plot.png")
-=======
 def plot_single_numeric(input_file, col, path):
     df = pd.read_parquet(input_file, columns=[col])
     file_name = os.path.join(path, f"{col}-dist-plot.png")
->>>>>>> add dask
     data = df[col].dropna()
     f, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
     histogram_violin_plots(data, axes, file_name=file_name)
@@ -119,12 +114,8 @@ def plot_single_numeric(input_file, col, path):
 
 
 @dask.delayed
-<<<<<<< HEAD
-def plot_single_category(df, col, path):
-=======
 def plot_single_category(input_file, col, path):
     df = pd.read_parquet(input_file, columns=[col])
->>>>>>> add dask
     value_counts = df[col].value_counts(dropna=False)
     # if the categories are more than 50 then this should be ignored
     # TODO find a better way to visualize this
@@ -136,12 +127,8 @@ def plot_single_category(input_file, col, path):
 
 
 @dask.delayed
-<<<<<<< HEAD
-def plot_category_category(df, col1, col2, path):
-=======
 def plot_category_category(input_file, col1, col2, path):
     df = pd.read_parquet(input_file, columns=[col1, col2])
->>>>>>> add dask
     if len(df[col1].unique()) < len(df[col2].unique()):
         col1, col2 = col2, col1
     file_name = os.path.join(path, f"{col1}-{col2}-bar-plot.png")
@@ -152,23 +139,15 @@ def plot_category_category(input_file, col1, col2, path):
 
 
 @dask.delayed
-<<<<<<< HEAD
-def plot_numeric_numeric(df, col1, col2, path):
-=======
 def plot_numeric_numeric(input_file, col1, col2, path):
     df = pd.read_parquet(input_file, columns=[col1, col2])
->>>>>>> add dask
     file_name = os.path.join(path, f"{col1}-{col2}-scatter-plot.png")
     scatter_plot(df, col1, col2, file_name=file_name)
 
 
 @dask.delayed
-<<<<<<< HEAD
-def plot_category_numeric(df, category_col, numeric_col, path):
-=======
 def plot_category_numeric(input_file, category_col, numeric_col, path):
     df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
->>>>>>> add dask
     f, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
     axes = list(chain.from_iterable(axes))
     file_name = os.path.join(path, f"{category_col}-{numeric_col}-plot.png")
@@ -183,15 +162,9 @@ def create_plots(input_file, dtypes, output_path):
     for col, dtype in dtypes.items():
         print(col)
         if dtype == "n":
-<<<<<<< HEAD
-            plots.append(plot_single_numeric(data, col, distributions_path))
-        if dtype == "c":
-            plots.append(plot_single_category(data, col, distributions_path))
-=======
             plots.append(plot_single_numeric(input_file, col, distributions_path))
         if dtype == "c":
             plots.append(plot_single_category(input_file, col, distributions_path))
->>>>>>> add dask
 
     for (col1, dtype1), (col2, dtype2) in combinations(dtypes.items(), 2):
         print(col1, col2)
@@ -199,21 +172,6 @@ def create_plots(input_file, dtypes, output_path):
             continue
         if dtype1 == "n" and dtype2 == "n":
             plots.append(
-<<<<<<< HEAD
-                plot_numeric_numeric(data, col1, col2, two_d_interactions_path)
-            )
-        if dtype1 == "c" and dtype2 == "c":
-            plots.append(
-                plot_category_category(data, col1, col2, two_d_interactions_path)
-            )
-        if dtype1 == "c" and dtype2 == "n":
-            plots.append(
-                plot_category_numeric(data, col1, col2, two_d_interactions_path)
-            )
-        if dtype1 == "n" and dtype2 == "c":
-            plots.append(
-                plot_category_numeric(data, col2, col1, two_d_interactions_path)
-=======
                 plot_numeric_numeric(input_file, col1, col2, two_d_interactions_path)
             )
         if dtype1 == "c" and dtype2 == "c":
@@ -227,7 +185,6 @@ def create_plots(input_file, dtypes, output_path):
         if dtype1 == "n" and dtype2 == "c":
             plots.append(
                 plot_category_numeric(input_file, col2, col1, two_d_interactions_path)
->>>>>>> add dask
             )
 
             # for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
