@@ -170,11 +170,11 @@ def create_plots(input_file, dtypes, output_path):
         print(col1, col2)
         if any(col in ignore for col in [dtype1, dtype2]):
             continue
-        if dtype1 == "n" and dtype2 == "n":
+        if dtype1 == dtype2 == "n":
             plots.append(
                 plot_numeric_numeric(input_file, col1, col2, two_d_interactions_path)
             )
-        if dtype1 == "c" and dtype2 == "c":
+        if dtype1 == dtype2 == "c":
             plots.append(
                 plot_category_category(input_file, col1, col2, two_d_interactions_path)
             )
