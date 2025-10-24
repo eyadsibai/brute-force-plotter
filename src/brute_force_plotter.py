@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 ignore = set()
+skip_existing_plots = True  # Global flag for skipping existing plots
 
 # Global configuration
 _show_plots = False
@@ -43,13 +44,31 @@ sns.set(rc={"figure.figsize": (8, 6)})
 @click.argument("input_file")
 @click.argument("dtypes")
 @click.argument("output_path")
-def main(input_file, dtypes, output_path):
+@click.option("--skip-existing", is_flag=True, default=True, help="Skip generating plots that already exist")
+@click.option("--theme", type=click.Choice(["darkgrid", "whitegrid", "dark", "white", "ticks"]), default="darkgrid", help="Seaborn plot style theme")
+@click.option("--n-workers", type=int, default=4, help="Number of parallel workers for plot generation")
+@click.option("--export-stats", is_flag=True, default=False, help="Export statistical summary to CSV")
+def main(input_file, dtypes, output_path, skip_existing, theme, n_workers, export_stats):
     """Create Plots From data in input"""
     # Set matplotlib backend for CLI (non-interactive)
     matplotlib.use("agg")
     
     from dask.distributed import Client, LocalCluster
-    cluster = LocalCluster(n_workers=10)
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Set global skip_existing flag
+    global skip_existing_plots
+    skip_existing_plots = skip_existing
+    
+    # Apply theme
+    sns.set_style(theme)
+    
+    cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
     client = Client(cluster)
 
     # Load dtypes JSON first to know which columns to ignore
@@ -332,6 +351,12 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
         output_path
     )
     plots = []
+    
+    # Add summary plots
+    logger.info("Adding correlation matrix and missing values plots...")
+    plots.append(plot_correlation_matrix(input_file, dtypes, distributions_path))
+    plots.append(plot_missing_values(input_file, dtypes, distributions_path))
+    
     for col, dtype in dtypes.items():
         print(col)
         if dtype == "i":
@@ -498,6 +523,27 @@ def bar_box_violin_dot_plots(data, category_col, numeric_col, axes, file_name=No
 def heatmap(data, file_name=None):
     cmap = "BuGn" if (data.values >= 0).all() else "coolwarm"
     sns.heatmap(data=data, annot=True, fmt="d", cmap=cmap)
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def correlation_heatmap(data, file_name=None, title="Correlation Matrix"):
+    """Create a correlation matrix heatmap"""
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(data=data, annot=True, fmt=".2f", cmap="coolwarm", center=0, 
+                vmin=-1, vmax=1, square=True, linewidths=0.5)
+    plt.title(title)
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def missing_plot(data, file_name=None):
+    """Create a heatmap showing missing values"""
+    plt.figure(figsize=(12, 6))
+    sns.heatmap(data, cbar=True, yticklabels=False, cmap="viridis")
+    plt.title("Missing Values Heatmap")
+    plt.xlabel("Columns")
+    plt.ylabel("Rows")
     sns.despine(left=True)
 
 

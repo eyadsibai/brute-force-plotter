@@ -48,7 +48,9 @@ See `example/library_usage_example.py <https://github.com/eyadsibai/brute_force_
 
 **As a Command-Line Tool**
 
-It was tested on python3 only
+Example
+-------
+It was tested on python3 only (Python 3.12+ recommended)
 
 .. code:: bash
 
@@ -56,9 +58,24 @@ It was tested on python3 only
 	$ cd brute_force_plotter
 	$ pip3 install -r requirements.txt
 	$ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
+
+Command Line Options
+--------------------
+- ``--skip-existing``: Skip generating plots that already exist (default: True)
+- ``--theme``: Choose plot style theme (darkgrid, whitegrid, dark, white, ticks) (default: darkgrid)
+- ``--n-workers``: Number of parallel workers for plot generation (default: 4)
+- ``--export-stats``: Export statistical summary to CSV files
+
+.. code:: bash
+
+	$ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
+
+Arguments
+---------
 - json.dump({k:v.name for k,v in df.dtypes.to_dict().items()},open('dtypes.json','w'))  
 - the first argument is the input file (csv file with data) `example/titanic.csv <https://github.com/eyadsibai/brute_force_plotter/example/titanic.csv>`_
 - second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) `example/titanic_dtypes.json <https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json>`_
+
 .. code:: json
 
 	{
@@ -79,8 +96,32 @@ It was tested on python3 only
 - third argument is the output directory
 - c stands for category, i stands for ignore, n for numeric
 
+Features
+--------
+The tool automatically generates:
 
-.. image:: https://raw.githubusercontent.com/eyadsibai/brute_force_plotter/master/example/output/distributions/Age-dist-plot.png
+**Distribution Plots:**
+
+- Histogram with KDE for numeric variables
+- Violin plots for numeric variables
+- Bar plots for categorical variables
+- Correlation matrices (Pearson and Spearman)
+- Missing values heatmap
+
+**2D Interaction Plots:**
+
+- Scatter plots for numeric vs numeric
+- Heatmaps for categorical vs categorical
+- Bar/Box/Violin/Strip plots for categorical vs numeric
+
+**Statistical Summaries (with --export-stats):**
+
+- Numeric statistics (mean, std, min, max, quartiles)
+- Category value counts
+- Missing values analysis
+
+Example Plots
+-------------.. image:: https://raw.githubusercontent.com/eyadsibai/brute_force_plotter/master/example/output/distributions/Age-dist-plot.png
     :alt: Age Distribution (Histogram with Kernel Density Estimation, Violin Plot)
     :width: 260
     :height: 300
@@ -113,8 +154,6 @@ It was tested on python3 only
 TODO
 ----
 - target variable support
-- Clean up part of the code
-- More documentation
 - Tests?
 - Support 3 variables (contour plots/ etc)
 - Fallback for large datasets
@@ -122,3 +161,15 @@ TODO
 - Map visualization (if geocoordinates)
 - Minimize the number of plots
 - Support for Time Series
+
+Recent Updates (2025)
+---------------------
+✅ Updated all dependencies to latest stable versions
+✅ Added correlation matrix plots (Pearson and Spearman)
+✅ Added missing values visualization
+✅ Added statistical summary export
+✅ Added configurable plot themes
+✅ Added parallel processing controls
+✅ Added skip-existing-plots option
+✅ Improved logging and progress indicators
+✅ Code cleanup and better error handling
