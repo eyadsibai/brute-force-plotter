@@ -60,6 +60,7 @@ target/
 .DS_Store
 .vscode/
 
-# Generated plots from examples
-example/output_from_library/
+# Generated plots from examples (all subdirectories except the main example directory)
+example/output*/
 example/simple_output/
+example/*_output/
