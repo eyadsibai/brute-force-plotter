@@ -52,12 +52,17 @@ def main(input_file, dtypes, output_path):
     cluster = LocalCluster(n_workers=10)
     client = Client(cluster)
 
-    data = pd.read_csv(input_file)
-    new_file_name = f"{input_file}.parq"
-    data.to_parquet(new_file_name)
-
+    # Load dtypes JSON first to know which columns to ignore
     with open(dtypes, "r") as f:
         data_types = json.load(f)
+
+    # Filter out columns with dtype "i" (ignore)
+    columns_to_load = [col for col, dtype in data_types.items() if dtype != "i"]
+
+    # Only load non-ignored columns from CSV
+    data = pd.read_csv(input_file, usecols=columns_to_load)
+    new_file_name = f"{input_file}.parq"
+    data.to_parquet(new_file_name)
 
     plots = create_plots(new_file_name, data_types, output_path)
     dask.compute(*plots)
@@ -329,6 +334,8 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
     plots = []
     for col, dtype in dtypes.items():
         print(col)
+        if dtype == "i":
+            continue
         if dtype == "n":
             if use_dask:
                 plots.append(plot_single_numeric(input_file, col, distributions_path))
@@ -342,7 +349,9 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
 
     for (col1, dtype1), (col2, dtype2) in combinations(dtypes.items(), 2):
         print(col1, col2)
-        if any(col in ignore for col in [dtype1, dtype2]):
+        if dtype1 == "i" or dtype2 == "i":
+            continue
+        if any(col in ignore for col in [col1, col2]):
             continue
         if dtype1 == dtype2 == "n":
             if use_dask:

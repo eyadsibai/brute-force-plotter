@@ -60,6 +60,8 @@ target/
 .DS_Store
 .vscode/
 
+# Generated parquet files
+*.parq
 # Generated plots from examples (all subdirectories except the main example directory)
 example/output*/
 example/simple_output/
