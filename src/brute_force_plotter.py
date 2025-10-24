@@ -53,7 +53,7 @@ def main(input_file, dtypes, output_path):
 
     # Filter out columns with dtype "i" (ignore)
     columns_to_load = [col for col, dtype in data_types.items() if dtype != "i"]
-    
+
     # Only load non-ignored columns from CSV
     data = pd.read_csv(input_file, usecols=columns_to_load)
     new_file_name = f"{input_file}.parq"
@@ -178,7 +178,7 @@ def create_plots(input_file, dtypes, output_path):
         print(col1, col2)
         if dtype1 == "i" or dtype2 == "i":
             continue
-        if any(col in ignore for col in [dtype1, dtype2]):
+        if any(col in ignore for col in [col1, col2]):
             continue
         if dtype1 == dtype2 == "n":
             plots.append(
