@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
@@ -7,8 +7,6 @@ Brute Force Plotter
 Command Line Interface
 
 """
-
-from __future__ import unicode_literals
 
 import errno
 import json
@@ -40,20 +38,24 @@ sns.set(rc={"figure.figsize": (8, 6)})
 
 
 @click.command()
-@click.argument("input-file")
+@click.argument("input_file")
 @click.argument("dtypes")
-@click.argument("output-path")
+@click.argument("output_path")
 def main(input_file, dtypes, output_path):
     """Create Plots From data in input"""
+    from dask.distributed import Client, LocalCluster
+    cluster = LocalCluster(n_workers=10)
+    client = Client(cluster)
 
     data = pd.read_csv(input_file)
     new_file_name = f"{input_file}.parq"
     data.to_parquet(new_file_name)
 
-    data_types = json.load(open(dtypes, "r"))
+    with open(dtypes, "r") as f:
+        data_types = json.load(f)
+
     plots = create_plots(new_file_name, data_types, output_path)
-    with ProgressBar():
-        dask.compute(*plots, scheduler="processes", n_workers=22)
+    dask.compute(*plots)
 
 
 def ignore_if_exist_or_save(func):
@@ -247,46 +249,31 @@ def _create_directories(output_path):
 
 
 def autolabel(rects):
+    """Attach a text label above each bar in *rects*, displaying its height."""
     for rect in rects:
         height = rect.get_height()
-        width = rect.get_width()
-
-        if math.isnan(height):
-            height = 0.0
-        if (height, width) == (1.0, 1.0):
-            continue
-        plt.text(
-            rect.get_x() + width / 2.0,
-            1.0 + height,
-            "%d" % int(height),
-            ha="center",
-            va="bottom",
-        )
+        if not math.isnan(height) and height > 0:
+            plt.annotate(f'{int(height)}',
+                         xy=(rect.get_x() + rect.get_width() / 2, height),
+                         xytext=(0, 3),  # 3 points vertical offset
+                         textcoords="offset points",
+                         ha='center', va='bottom')
 
 
 @ignore_if_exist_or_save
 def histogram_violin_plots(data, axes, file_name=None):
     # histogram
-    sns.distplot(data, ax=axes[0], axlabel="")
-    sns.violinplot(data, ax=axes[1], inner="quartile", scale="count")
+    sns.histplot(data, ax=axes[0], kde=True)
+    sns.violinplot(x=data, ax=axes[1], inner="quartile", scale="count")
     sns.despine(left=True)
 
 
 @ignore_if_exist_or_save
 def bar_plot(data, col, hue=None, file_name=None):
-    sns.countplot(col, hue=hue, data=data.sort_values(col))
+    ax = sns.countplot(x=col, hue=hue, data=data.sort_values(col))
     sns.despine(left=True)
 
-    subplots = [
-        x for x in plt.gcf().get_children() if isinstance(x, matplotlib.axes.Subplot)
-    ]
-    for plot in subplots:
-        rectangles = [
-            x
-            for x in plot.get_children()
-            if isinstance(x, matplotlib.patches.Rectangle)
-        ]
-    autolabel(rectangles)
+    autolabel(ax.patches)
 
 
 @ignore_if_exist_or_save
@@ -297,21 +284,19 @@ def scatter_plot(data, col1, col2, file_name=None):
 
 @ignore_if_exist_or_save
 def bar_box_violin_dot_plots(data, category_col, numeric_col, axes, file_name=None):
-    sns.barplot(category_col, numeric_col, data=data, ax=axes[0])
+    sns.barplot(x=category_col, y=numeric_col, data=data, ax=axes[0])
+    sns.stripplot(x=category_col, y=numeric_col, data=data, jitter=True, ax=axes[1])
     sns.boxplot(
-        category_col, numeric_col, data=data[data[numeric_col].notnull()], ax=axes[2]
+        x=category_col, y=numeric_col, data=data[data[numeric_col].notnull()], ax=axes[2]
     )
     sns.violinplot(
-        category_col,
-        numeric_col,
+        x=category_col,
+        y=numeric_col,
         data=data,
-        kind="violin",
         inner="quartile",
         scale="count",
-        split=True,
         ax=axes[3],
     )
-    sns.stripplot(category_col, numeric_col, data=data, jitter=True, ax=axes[1])
     sns.despine(left=True)
 
 
