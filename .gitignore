@@ -59,3 +59,7 @@ target/
 .idea/
 .DS_Store
 .vscode/
+
+# Generated plots from examples
+example/output_from_library/
+example/simple_output/
