@@ -30,6 +30,7 @@ matplotlib.use("agg")
 
 
 ignore = set()
+skip_existing_plots = True  # Global flag for skipping existing plots
 
 sns.set_style("darkgrid")
 sns.set_context("paper")
@@ -41,10 +42,28 @@ sns.set(rc={"figure.figsize": (8, 6)})
 @click.argument("input_file")
 @click.argument("dtypes")
 @click.argument("output_path")
-def main(input_file, dtypes, output_path):
+@click.option("--skip-existing", is_flag=True, default=True, help="Skip generating plots that already exist")
+@click.option("--theme", type=click.Choice(["darkgrid", "whitegrid", "dark", "white", "ticks"]), default="darkgrid", help="Seaborn plot style theme")
+@click.option("--n-workers", type=int, default=4, help="Number of parallel workers for plot generation")
+@click.option("--export-stats", is_flag=True, default=False, help="Export statistical summary to CSV")
+def main(input_file, dtypes, output_path, skip_existing, theme, n_workers, export_stats):
     """Create Plots From data in input"""
     from dask.distributed import Client, LocalCluster
-    cluster = LocalCluster(n_workers=10)
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Set global skip_existing flag
+    global skip_existing_plots
+    skip_existing_plots = skip_existing
+    
+    # Apply theme
+    sns.set_style(theme)
+    
+    cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
     client = Client(cluster)
 
     data = pd.read_csv(input_file)
@@ -53,22 +72,34 @@ def main(input_file, dtypes, output_path):
 
     with open(dtypes, "r") as f:
         data_types = json.load(f)
+    
+    # Export statistical summary if requested
+    if export_stats:
+        export_statistical_summary(data, data_types, output_path)
 
-    plots = create_plots(new_file_name, data_types, output_path)
-    dask.compute(*plots)
+    plots = create_plots(new_file_name, data_types, output_path, skip_existing)
+    
+    logger.info(f"Generating {len(plots)} plots...")
+    with ProgressBar():
+        dask.compute(*plots)
+    
+    logger.info("All plots generated successfully!")
+    client.close()
+    cluster.close()
 
 
 def ignore_if_exist_or_save(func):
     def wrapper(*args, **kwargs):
-
         file_name = kwargs["file_name"]
-
-        if os.path.isfile(file_name):
+        
+        if skip_existing_plots and os.path.isfile(file_name):
+            logger.debug(f"Skipping existing plot: {file_name}")
             plt.close("all")
         else:
             func(*args, **kwargs)
             plt.gcf().set_tight_layout(True)
             plt.gcf().savefig(file_name, dpi=120)
+            logger.debug(f"Saved plot: {file_name}")
             plt.close("all")
 
     return wrapper
@@ -155,20 +186,105 @@ def plot_category_numeric(input_file, category_col, numeric_col, path):
     bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
 
-def create_plots(input_file, dtypes, output_path):
+@dask.delayed
+def plot_missing_values(input_file, dtypes, path):
+    """Create a heatmap showing missing values across the dataset"""
+    # Read all columns except ignored ones
+    cols_to_read = [col for col, dtype in dtypes.items() if dtype != 'i']
+    df = pd.read_parquet(input_file, columns=cols_to_read)
+    
+    file_name = os.path.join(path, "missing-values-heatmap.png")
+    missing_data = df.isnull()
+    
+    if missing_data.sum().sum() > 0:  # Only create if there are missing values
+        missing_plot(missing_data, file_name=file_name)
+    else:
+        logger.info("No missing values found in dataset")
+
+
+@dask.delayed
+def plot_correlation_matrix(input_file, dtypes, path):
+    """Create correlation matrix for numeric variables"""
+    numeric_cols = [col for col, dtype in dtypes.items() if dtype == 'n']
+    
+    if len(numeric_cols) < 2:
+        logger.info("Not enough numeric columns for correlation matrix")
+        return
+    
+    df = pd.read_parquet(input_file, columns=numeric_cols)
+    
+    # Pearson correlation
+    file_name = os.path.join(path, "correlation-matrix-pearson.png")
+    correlation_heatmap(df.corr(method='pearson'), file_name=file_name, title="Pearson Correlation Matrix")
+    
+    # Spearman correlation
+    file_name = os.path.join(path, "correlation-matrix-spearman.png")
+    correlation_heatmap(df.corr(method='spearman'), file_name=file_name, title="Spearman Correlation Matrix")
+
+
+def export_statistical_summary(data, dtypes, output_path):
+    """Export statistical summary of the dataset to CSV"""
+    logger.info("Generating statistical summary...")
+    
+    numeric_cols = [col for col, dtype in dtypes.items() if dtype == 'n']
+    category_cols = [col for col, dtype in dtypes.items() if dtype == 'c']
+    
+    summary_file = os.path.join(output_path, "statistical_summary.csv")
+    
+    # Numeric statistics
+    if numeric_cols:
+        numeric_stats = data[numeric_cols].describe()
+        numeric_stats.to_csv(summary_file)
+        logger.info(f"Statistical summary saved to {summary_file}")
+    
+    # Category value counts
+    if category_cols:
+        category_summary_file = os.path.join(output_path, "category_summary.csv")
+        category_summaries = []
+        for col in category_cols:
+            value_counts = data[col].value_counts()
+            category_summaries.append(pd.DataFrame({
+                'column': col,
+                'value': value_counts.index,
+                'count': value_counts.values
+            }))
+        if category_summaries:
+            pd.concat(category_summaries).to_csv(category_summary_file, index=False)
+            logger.info(f"Category summary saved to {category_summary_file}")
+    
+    # Missing values summary
+    missing_summary_file = os.path.join(output_path, "missing_values_summary.csv")
+    missing_counts = data.isnull().sum()
+    missing_pct = (missing_counts / len(data)) * 100
+    missing_df = pd.DataFrame({
+        'column': missing_counts.index,
+        'missing_count': missing_counts.values,
+        'missing_percentage': missing_pct.values
+    })
+    missing_df.to_csv(missing_summary_file, index=False)
+    logger.info(f"Missing values summary saved to {missing_summary_file}")
+
+
+def create_plots(input_file, dtypes, output_path, skip_existing=True):
     distributions_path, two_d_interactions_path, three_d_interactions_path = _create_directories(
         output_path
     )
     plots = []
+    
+    # Add summary plots
+    logger.info("Adding correlation matrix and missing values plots...")
+    plots.append(plot_correlation_matrix(input_file, dtypes, distributions_path))
+    plots.append(plot_missing_values(input_file, dtypes, distributions_path))
+    
     for col, dtype in dtypes.items():
-        print(col)
+        logger.info(f"Processing column: {col}")
         if dtype == "n":
             plots.append(plot_single_numeric(input_file, col, distributions_path))
         if dtype == "c":
             plots.append(plot_single_category(input_file, col, distributions_path))
 
     for (col1, dtype1), (col2, dtype2) in combinations(dtypes.items(), 2):
-        print(col1, col2)
+        logger.debug(f"Processing pair: {col1}, {col2}")
         if any(col in ignore for col in [dtype1, dtype2]):
             continue
         if dtype1 == dtype2 == "n":
@@ -304,6 +420,27 @@ def bar_box_violin_dot_plots(data, category_col, numeric_col, axes, file_name=No
 def heatmap(data, file_name=None):
     cmap = "BuGn" if (data.values >= 0).all() else "coolwarm"
     sns.heatmap(data=data, annot=True, fmt="d", cmap=cmap)
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def correlation_heatmap(data, file_name=None, title="Correlation Matrix"):
+    """Create a correlation matrix heatmap"""
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(data=data, annot=True, fmt=".2f", cmap="coolwarm", center=0, 
+                vmin=-1, vmax=1, square=True, linewidths=0.5)
+    plt.title(title)
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def missing_plot(data, file_name=None):
+    """Create a heatmap showing missing values"""
+    plt.figure(figsize=(12, 6))
+    sns.heatmap(data, cbar=True, yticklabels=False, cmap="viridis")
+    plt.title("Missing Values Heatmap")
+    plt.xlabel("Columns")
+    plt.ylabel("Rows")
     sns.despine(left=True)
 
 
