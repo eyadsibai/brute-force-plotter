@@ -7,9 +7,47 @@ Installation
 ------------
 will be packaged soon
 
+For now, you can use it by cloning the repository:
 
-Example
--------
+.. code:: bash
+
+	$ git clone https://github.com/eyadsibai/brute_force_plotter.git
+	$ cd brute_force_plotter
+	$ pip3 install -r requirements.txt
+
+
+Usage
+-----
+
+**As a Python Library (NEW!)**
+
+You can now use brute-force-plotter directly in your Python scripts:
+
+.. code:: python
+
+	import pandas as pd
+	import brute_force_plotter as bfp
+
+	# Load your data
+	data = pd.read_csv('data.csv')
+
+	# Define data types (c=category, n=numeric, i=ignore)
+	dtypes = {
+	    'column1': 'n',  # numeric
+	    'column2': 'c',  # category
+	    'column3': 'i'   # ignore
+	}
+
+	# Create and save plots
+	bfp.plot(data, dtypes, output_path='./plots')
+
+	# Or show plots interactively
+	bfp.plot(data, dtypes, show=True)
+
+See `example/library_usage_example.py <https://github.com/eyadsibai/brute_force_plotter/example/library_usage_example.py>`_ for more examples.
+
+**As a Command-Line Tool**
+
 It was tested on python3 only
 
 .. code:: bash
