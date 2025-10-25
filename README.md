@@ -31,16 +31,6 @@ This will create a virtual environment (.venv) and install all dependencies with
 - `uv lock` - Update the lockfile
 - `uv run <command>` - Run a command in the virtual environment
 
-**Using pip (Traditional)**
-
-You can also use pip to install dependencies:
-
-```bash
-$ git clone https://github.com/eyadsibai/brute_force_plotter.git
-$ cd brute_force_plotter
-$ pip3 install -r requirements.txt
-```
-
 ## Usage
 
 **As a Python Library (NEW!)**
@@ -88,15 +78,6 @@ $ uv run python -m src example/titanic.csv example/titanic_dtypes.json example/o
 $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output
 ```
 
-**Using pip:**
-
-```bash
-$ git clone https://github.com/eyadsibai/brute_force_plotter.git
-$ cd brute_force_plotter
-$ pip3 install -r requirements.txt
-$ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
-```
-
 ## Command Line Options
 
 - `--skip-existing`: Skip generating plots that already exist (default: True)
@@ -113,11 +94,6 @@ $ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
 $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
 ```
 
-**Using pip:**
-
-```bash
-$ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
-```
 
 ## Large Dataset Handling
 
@@ -291,12 +267,6 @@ Using UV:
 $ uv sync  # Installs all dependencies including dev tools
 ```
 
-Using pip:
-```bash
-$ pip install -r requirements.txt
-$ pip install pytest pytest-cov ruff pre-commit
-```
-
 **2. Install Pre-commit Hooks (REQUIRED)**
 
 This project uses [pre-commit](https://pre-commit.com/) hooks to automatically enforce code quality standards on every commit:
@@ -371,6 +341,19 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 - Using code quality tools (Ruff, pre-commit)
 - Submitting pull requests
 - Coding standards and best practices
+
+## Contributors
+
+### Code Contributors
+
+- Eyad Sibai / [@eyadsibai](https://github.com/eyadsibai)
+
+### Special Thanks
+
+The following haven't provided code directly, but have provided guidance and advice:
+
+- Andreas Meisingseth / [@AndreasMeisingseth](https://github.com/AndreasMeisingseth)
+- Tom Baylis / [@tbaylis](https://github.com/tbaylis)
 
 ## License
 
