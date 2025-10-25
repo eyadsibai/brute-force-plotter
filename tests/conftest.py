@@ -3,8 +3,8 @@ Pytest configuration and shared fixtures for brute-force-plotter tests.
 """
 
 import os
-import tempfile
 from pathlib import Path
+import tempfile
 
 import pandas as pd
 import pytest
@@ -47,9 +47,31 @@ def sample_mixed_data():
     return pd.DataFrame(
         {
             "age": [25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
-            "income": [30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000, 110000, 120000],
+            "income": [
+                30000,
+                40000,
+                50000,
+                60000,
+                70000,
+                80000,
+                90000,
+                100000,
+                110000,
+                120000,
+            ],
             "gender": ["M", "F", "M", "F", "M", "F", "M", "F", "M", "F"],
-            "education": ["HS", "BS", "MS", "PhD", "BS", "MS", "PhD", "BS", "MS", "PhD"],
+            "education": [
+                "HS",
+                "BS",
+                "MS",
+                "PhD",
+                "BS",
+                "MS",
+                "PhD",
+                "BS",
+                "MS",
+                "PhD",
+            ],
         }
     )
 
@@ -134,7 +156,7 @@ def sample_csv_file(temp_dir, sample_mixed_data):
 def sample_dtypes_json(temp_dir, mixed_dtypes):
     """Create a temporary JSON file with dtypes."""
     import json
-    
+
     json_path = os.path.join(temp_dir, "dtypes.json")
     with open(json_path, "w") as f:
         json.dump(mixed_dtypes, f)
@@ -145,7 +167,7 @@ def sample_dtypes_json(temp_dir, mixed_dtypes):
 def reset_matplotlib():
     """Reset matplotlib state between tests."""
     import matplotlib.pyplot as plt
-    
+
     yield
     plt.close("all")
 
@@ -154,15 +176,15 @@ def reset_matplotlib():
 def reset_global_state():
     """Reset global state in brute_force_plotter module."""
     from src import brute_force_plotter
-    
+
     # Store original values
     original_ignore = brute_force_plotter.ignore.copy()
     original_skip_existing = brute_force_plotter.skip_existing_plots
     original_show_plots = brute_force_plotter._show_plots
     original_save_plots = brute_force_plotter._save_plots
-    
+
     yield
-    
+
     # Restore original values
     brute_force_plotter.ignore = original_ignore
     brute_force_plotter.skip_existing_plots = original_skip_existing

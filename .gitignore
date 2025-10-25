@@ -65,6 +65,9 @@ target/
 .DS_Store
 .vscode/
 
+# Pre-commit
+.pre-commit-cache/
+
 # Generated parquet files
 *.parq
 # Generated plots from examples (all subdirectories except the main example directory)

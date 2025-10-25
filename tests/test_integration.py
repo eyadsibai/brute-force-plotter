@@ -2,13 +2,10 @@
 Integration tests for the plot library function and CLI.
 """
 
-import json
 import os
 import subprocess
 import tempfile
-from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from src.brute_force_plotter import create_plots, plot
@@ -27,15 +24,17 @@ class TestPlotLibraryFunction:
             show=False,
             use_dask=False,
         )
-        
+
         assert output_path == temp_dir
-        
+
         # Check that directories were created
         assert os.path.exists(os.path.join(temp_dir, "distributions"))
         assert os.path.exists(os.path.join(temp_dir, "2d_interactions"))
 
     @pytest.mark.integration
-    def test_plot_creates_distribution_plots(self, sample_mixed_data, mixed_dtypes, temp_dir):
+    def test_plot_creates_distribution_plots(
+        self, sample_mixed_data, mixed_dtypes, temp_dir
+    ):
         """Test that distribution plots are created."""
         plot(
             sample_mixed_data,
@@ -44,19 +43,21 @@ class TestPlotLibraryFunction:
             show=False,
             use_dask=False,
         )
-        
+
         dist_dir = os.path.join(temp_dir, "distributions")
-        
+
         # Check for numeric distribution plots
         assert os.path.exists(os.path.join(dist_dir, "age-dist-plot.png"))
         assert os.path.exists(os.path.join(dist_dir, "income-dist-plot.png"))
-        
+
         # Check for categorical bar plots
         assert os.path.exists(os.path.join(dist_dir, "gender-bar-plot.png"))
         assert os.path.exists(os.path.join(dist_dir, "education-bar-plot.png"))
 
     @pytest.mark.integration
-    def test_plot_creates_correlation_matrices(self, sample_mixed_data, mixed_dtypes, temp_dir):
+    def test_plot_creates_correlation_matrices(
+        self, sample_mixed_data, mixed_dtypes, temp_dir
+    ):
         """Test that correlation matrices are created."""
         plot(
             sample_mixed_data,
@@ -65,15 +66,17 @@ class TestPlotLibraryFunction:
             show=False,
             use_dask=False,
         )
-        
+
         dist_dir = os.path.join(temp_dir, "distributions")
-        
+
         # Check for correlation matrices
         assert os.path.exists(os.path.join(dist_dir, "correlation-pearson.png"))
         assert os.path.exists(os.path.join(dist_dir, "correlation-spearman.png"))
 
     @pytest.mark.integration
-    def test_plot_creates_2d_interaction_plots(self, sample_mixed_data, mixed_dtypes, temp_dir):
+    def test_plot_creates_2d_interaction_plots(
+        self, sample_mixed_data, mixed_dtypes, temp_dir
+    ):
         """Test that 2D interaction plots are created."""
         plot(
             sample_mixed_data,
@@ -82,16 +85,22 @@ class TestPlotLibraryFunction:
             show=False,
             use_dask=False,
         )
-        
+
         interactions_dir = os.path.join(temp_dir, "2d_interactions")
-        
+
         # Check for numeric-numeric scatter plot
-        assert os.path.exists(os.path.join(interactions_dir, "age-income-scatter-plot.png"))
-        
+        assert os.path.exists(
+            os.path.join(interactions_dir, "age-income-scatter-plot.png")
+        )
+
         # Check for category-category plots
-        assert os.path.exists(os.path.join(interactions_dir, "education-gender-bar-plot.png"))
-        assert os.path.exists(os.path.join(interactions_dir, "education-gender-heatmap.png"))
-        
+        assert os.path.exists(
+            os.path.join(interactions_dir, "education-gender-bar-plot.png")
+        )
+        assert os.path.exists(
+            os.path.join(interactions_dir, "education-gender-heatmap.png")
+        )
+
         # Check for category-numeric plots
         assert os.path.exists(os.path.join(interactions_dir, "gender-age-plot.png"))
         assert os.path.exists(os.path.join(interactions_dir, "gender-income-plot.png"))
@@ -107,11 +116,11 @@ class TestPlotLibraryFunction:
             use_dask=False,
             export_stats=True,
         )
-        
+
         # Check that statistics directory exists
         stats_dir = os.path.join(temp_dir, "statistics")
         assert os.path.exists(stats_dir)
-        
+
         # Check for statistics files
         assert os.path.exists(os.path.join(stats_dir, "numeric_statistics.csv"))
         assert os.path.exists(os.path.join(stats_dir, "missing_values_summary.csv"))
@@ -128,9 +137,9 @@ class TestPlotLibraryFunction:
             use_dask=True,
             n_workers=2,
         )
-        
+
         assert output_path == temp_dir
-        
+
         # Check that some plots were created
         dist_dir = os.path.join(temp_dir, "distributions")
         assert os.path.exists(os.path.join(dist_dir, "age-dist-plot.png"))
@@ -145,7 +154,7 @@ class TestPlotLibraryFunction:
             show=False,
             use_dask=False,
         )
-        
+
         # Should return a temporary directory path
         assert output_path is not None
         assert os.path.exists(output_path)
@@ -160,7 +169,7 @@ class TestPlotLibraryFunction:
             "gender": "c",
             "education": "i",  # ignored
         }
-        
+
         plot(
             sample_mixed_data,
             dtypes,
@@ -168,18 +177,18 @@ class TestPlotLibraryFunction:
             show=False,
             use_dask=False,
         )
-        
+
         dist_dir = os.path.join(temp_dir, "distributions")
-        
+
         # Age plot should exist
         assert os.path.exists(os.path.join(dist_dir, "age-dist-plot.png"))
-        
+
         # Income plot should NOT exist (ignored)
         assert not os.path.exists(os.path.join(dist_dir, "income-dist-plot.png"))
-        
+
         # Gender plot should exist
         assert os.path.exists(os.path.join(dist_dir, "gender-bar-plot.png"))
-        
+
         # Education plot should NOT exist (ignored)
         assert not os.path.exists(os.path.join(dist_dir, "education-bar-plot.png"))
 
@@ -187,7 +196,7 @@ class TestPlotLibraryFunction:
     def test_plot_with_missing_values(self, sample_data_with_missing, temp_dir):
         """Test plotting with data containing missing values."""
         dtypes = {"col1": "n", "col2": "n", "category": "c"}
-        
+
         plot(
             sample_data_with_missing,
             dtypes,
@@ -195,19 +204,21 @@ class TestPlotLibraryFunction:
             show=False,
             use_dask=False,
         )
-        
+
         dist_dir = os.path.join(temp_dir, "distributions")
-        
+
         # Missing values heatmap should be created
         assert os.path.exists(os.path.join(dist_dir, "missing-values-heatmap.png"))
 
     @pytest.mark.integration
     @pytest.mark.slow
-    def test_plot_end_to_end_with_titanic_data(self, titanic_data, titanic_dtypes, temp_dir):
+    def test_plot_end_to_end_with_titanic_data(
+        self, titanic_data, titanic_dtypes, temp_dir
+    ):
         """Test end-to-end plotting with the Titanic dataset."""
         if titanic_data is None:
             pytest.skip("Titanic data not available")
-        
+
         output_path = plot(
             titanic_data,
             titanic_dtypes,
@@ -216,14 +227,14 @@ class TestPlotLibraryFunction:
             use_dask=False,
             export_stats=True,
         )
-        
+
         assert output_path == temp_dir
-        
+
         # Verify directories exist
         assert os.path.exists(os.path.join(temp_dir, "distributions"))
         assert os.path.exists(os.path.join(temp_dir, "2d_interactions"))
         assert os.path.exists(os.path.join(temp_dir, "statistics"))
-        
+
         # Check for some expected plots
         dist_dir = os.path.join(temp_dir, "distributions")
         assert os.path.exists(os.path.join(dist_dir, "Age-dist-plot.png"))
@@ -234,19 +245,24 @@ class TestCreatePlotsFunction:
     """Tests for the create_plots function."""
 
     @pytest.mark.integration
-    def test_create_plots_returns_delayed_tasks(self, sample_parquet_file, mixed_dtypes):
+    def test_create_plots_returns_delayed_tasks(
+        self, sample_parquet_file, mixed_dtypes
+    ):
         """Test that create_plots returns Dask delayed tasks."""
         output_dir = tempfile.mkdtemp()
-        
+
         try:
-            plots = create_plots(sample_parquet_file, mixed_dtypes, output_dir, use_dask=True)
-            
+            plots = create_plots(
+                sample_parquet_file, mixed_dtypes, output_dir, use_dask=True
+            )
+
             # Should return a list of delayed objects
             assert isinstance(plots, list)
             assert len(plots) > 0
         finally:
             # Cleanup
             import shutil
+
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
 
@@ -254,23 +270,27 @@ class TestCreatePlotsFunction:
     def test_create_plots_with_use_dask_false(self, sample_parquet_file, mixed_dtypes):
         """Test create_plots with use_dask=False."""
         output_dir = tempfile.mkdtemp()
-        
+
         try:
             from src import brute_force_plotter
+
             brute_force_plotter._save_plots = True
             brute_force_plotter._show_plots = False
-            
-            plots = create_plots(sample_parquet_file, mixed_dtypes, output_dir, use_dask=False)
-            
+
+            plots = create_plots(
+                sample_parquet_file, mixed_dtypes, output_dir, use_dask=False
+            )
+
             # Should still return a list (though items are executed immediately)
             assert isinstance(plots, list)
-            
+
             # Check that some plots were created
             dist_dir = os.path.join(output_dir, "distributions")
             assert os.path.exists(os.path.join(dist_dir, "age-dist-plot.png"))
         finally:
             # Cleanup
             import shutil
+
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
 
@@ -283,7 +303,7 @@ class TestCLIInterface:
     def test_cli_basic_execution(self, sample_csv_file, sample_dtypes_json, temp_dir):
         """Test basic CLI execution."""
         import sys
-        
+
         # Run the CLI
         result = subprocess.run(
             [
@@ -298,10 +318,10 @@ class TestCLIInterface:
             text=True,
             timeout=60,
         )
-        
+
         # Check that it ran successfully
         assert result.returncode == 0
-        
+
         # Check that output directories were created
         assert os.path.exists(os.path.join(temp_dir, "distributions"))
         assert os.path.exists(os.path.join(temp_dir, "2d_interactions"))
@@ -311,7 +331,7 @@ class TestCLIInterface:
     def test_cli_with_export_stats(self, sample_csv_file, sample_dtypes_json, temp_dir):
         """Test CLI with --export-stats flag."""
         import sys
-        
+
         result = subprocess.run(
             [
                 sys.executable,
@@ -326,9 +346,9 @@ class TestCLIInterface:
             text=True,
             timeout=60,
         )
-        
+
         assert result.returncode == 0
-        
+
         # Check that statistics were exported
         stats_dir = os.path.join(temp_dir, "statistics")
         assert os.path.exists(stats_dir)
@@ -338,7 +358,7 @@ class TestCLIInterface:
     def test_cli_with_theme_option(self, sample_csv_file, sample_dtypes_json, temp_dir):
         """Test CLI with --theme option."""
         import sys
-        
+
         result = subprocess.run(
             [
                 sys.executable,
@@ -354,9 +374,9 @@ class TestCLIInterface:
             text=True,
             timeout=60,
         )
-        
+
         assert result.returncode == 0
-        
+
         # Check that plots were created
         assert os.path.exists(os.path.join(temp_dir, "distributions"))
 
@@ -364,15 +384,17 @@ class TestCLIInterface:
     @pytest.mark.integration
     @pytest.mark.cli
     @pytest.mark.slow
-    def test_cli_with_n_workers_option(self, sample_csv_file, sample_dtypes_json, temp_dir):
+    def test_cli_with_n_workers_option(
+        self, sample_csv_file, sample_dtypes_json, temp_dir
+    ):
         """Test CLI with --n-workers option.
-        
+
         Note: This test can be flaky in CI environments due to Dask distributed worker
         initialization timing issues. If it fails intermittently, it's likely a Dask
         worker coordination issue, not a code bug.
         """
         import sys
-        
+
         result = subprocess.run(
             [
                 sys.executable,
@@ -388,11 +410,11 @@ class TestCLIInterface:
             text=True,
             timeout=60,
         )
-        
+
         # Accept both success and specific Dask worker errors (can be flaky in CI)
-        if result.returncode != 0:
-            # Check if it's a known Dask worker timing issue
-            if "CancelledError" in result.stderr or "worker" in result.stderr.lower():
-                pytest.skip("Dask worker initialization timing issue in CI environment")
-        
+        if result.returncode != 0 and (
+            "CancelledError" in result.stderr or "worker" in result.stderr.lower()
+        ):
+            pytest.skip("Dask worker initialization timing issue in CI environment")
+
         assert result.returncode == 0
