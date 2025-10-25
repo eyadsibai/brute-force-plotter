@@ -298,7 +298,7 @@ def plot(
                     plot_task.compute()
 
         # Export statistical summaries if requested
-        # Use full dataset for stats if data was sampled
+        # If data was sampled, use full dataset for accurate statistics
         if export_stats:
             if was_sampled:
                 logger.info("Using full dataset for statistical summary export...")
