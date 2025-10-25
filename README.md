@@ -44,7 +44,11 @@ import brute_force_plotter as bfp
 # Load your data
 data = pd.read_csv('data.csv')
 
-# Define data types (c=category, n=numeric, i=ignore)
+# Option 1: Automatic type inference (NEW!)
+output_path, dtypes = bfp.plot(data)
+print(f"Inferred types: {dtypes}")
+
+# Option 2: Manual type definition (c=category, n=numeric, i=ignore)
 dtypes = {
     'column1': 'n',  # numeric
     'column2': 'c',  # category
@@ -56,6 +60,11 @@ bfp.plot(data, dtypes, output_path='./plots')
 
 # Or show plots interactively
 bfp.plot(data, dtypes, show=True)
+
+# Option 3: Manually infer types first, then edit if needed
+dtypes = bfp.infer_dtypes(data)
+# Edit dtypes as needed...
+bfp.plot(data, dtypes, output_path='./plots')
 ```
 
 See [example/library_usage_example.py](https://github.com/eyadsibai/brute_force_plotter/example/library_usage_example.py) for more examples.
@@ -72,6 +81,11 @@ It was tested on python3 only (Python 3.10+ required)
 $ git clone https://github.com/eyadsibai/brute_force_plotter.git
 $ cd brute_force_plotter
 $ uv sync
+
+# With automatic type inference (NEW!)
+$ uv run python -m src example/titanic.csv example/output --infer-dtypes --save-dtypes example/auto_dtypes.json
+
+# With manual type definition
 $ uv run python -m src example/titanic.csv example/titanic_dtypes.json example/output
 
 # Or use the brute-force-plotter command:
@@ -84,11 +98,13 @@ $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json exa
 - `--theme`: Choose plot style theme (darkgrid, whitegrid, dark, white, ticks) (default: darkgrid)
 - `--n-workers`: Number of parallel workers for plot generation (default: 4)
 - `--export-stats`: Export statistical summary to CSV files
+- `--infer-dtypes`: Automatically infer data types from the data (NEW!)
+- `--save-dtypes PATH`: Save inferred or used dtypes to a JSON file (NEW!)
 
 **Using UV:**
 
 ```bash
-$ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
+$ uv run brute-force-plotter example/titanic.csv example/output --infer-dtypes --save-dtypes example/auto_dtypes.json --theme whitegrid --n-workers 8 --export-stats
 ```
 
 ## Arguments
@@ -159,14 +175,14 @@ The tool automatically generates:
 - ~~Tests?~~ ✅ Comprehensive test suite added!
 - Support 3 variables (contour plots/ etc)
 - Fallback for large datasets
-- Figure out the data type or suggest some
+- ~~Figure out the data type or suggest some~~ ✅ Automatic data type inference added!
 - Map visualization (if geocoordinates)
 - Minimize the number of plots
 - Support for Time Series
 
 ## Testing
 
-The project includes a comprehensive test suite with 66+ tests covering unit tests, integration tests, and edge cases.
+The project includes a comprehensive test suite with 81+ tests covering unit tests, integration tests, and edge cases.
 
 **Running Tests**
 
@@ -282,6 +298,7 @@ Pre-commit hooks ensure that:
 ✅ Improved logging and progress indicators
 ✅ Code cleanup and better error handling
 ✅ **Comprehensive test suite with 96% coverage**
+✅ **Automatic data type inference** - No need to manually specify data types!
 
 ## Contributing
 

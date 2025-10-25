@@ -11,7 +11,11 @@ Basic usage:
     >>> # Load your data
     >>> data = pd.read_csv('data.csv')
     >>>
-    >>> # Define data types (c=category, n=numeric, i=ignore)
+    >>> # Option 1: Automatic type inference
+    >>> output_path, dtypes = bfp.plot(data)
+    >>> print(f"Inferred types: {dtypes}")
+    >>>
+    >>> # Option 2: Manual type definition (c=category, n=numeric, i=ignore)
     >>> dtypes = {
     >>>     'column1': 'n',  # numeric
     >>>     'column2': 'c',  # category
@@ -20,10 +24,13 @@ Basic usage:
     >>>
     >>> # Create plots
     >>> bfp.plot(data, dtypes, output_path='./output', show=False)
+    >>>
+    >>> # Option 3: Infer types manually
+    >>> dtypes = bfp.infer_dtypes(data)
 
 """
 
-from .brute_force_plotter import plot
+from .brute_force_plotter import infer_dtypes, plot
 
 __version__ = "0.1.0"
-__all__ = ["plot"]
+__all__ = ["plot", "infer_dtypes"]
