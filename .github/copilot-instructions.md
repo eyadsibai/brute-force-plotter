@@ -25,7 +25,7 @@ Brute Force Plotter is a Python tool designed to visualize data quickly with min
   - `titanic_dtypes.json` - Data type definitions
   - `output/` - Generated plots directory
 - `requirements.txt` - Python dependencies
-- `README.rst` - Documentation in reStructuredText format
+- `README.md` - Documentation in Markdown format
 
 ## Running the Tool
 
@@ -116,5 +116,5 @@ When modifying this codebase:
 - Ensure parallel processing with Dask continues to work
 - Keep plot generation functions as `@dask.delayed` for performance
 - Test with the example titanic dataset
-- Update README.rst for user-facing changes
+- Update README.md for user-facing changes
 - Consider matplotlib/seaborn version compatibility
