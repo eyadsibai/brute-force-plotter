@@ -7,7 +7,13 @@ Installation
 ------------
 **Using UV (Recommended)**
 
-UV is a fast Python package installer and resolver. Install the project using:
+UV is a fast Python package installer and resolver. First, install UV:
+
+.. code:: bash
+
+	$ pip install uv
+
+Then install the project using:
 
 .. code:: bash
 
@@ -15,7 +21,15 @@ UV is a fast Python package installer and resolver. Install the project using:
 	$ cd brute_force_plotter
 	$ uv sync
 
-This will create a virtual environment and install all dependencies.
+This will create a virtual environment (.venv) and install all dependencies with locked versions for reproducibility.
+
+**Useful UV Commands:**
+
+- ``uv sync`` - Install dependencies and sync the environment
+- ``uv add <package>`` - Add a new dependency
+- ``uv remove <package>`` - Remove a dependency
+- ``uv lock`` - Update the lockfile
+- ``uv run <command>`` - Run a command in the virtual environment
 
 **Using pip (Traditional)**
 

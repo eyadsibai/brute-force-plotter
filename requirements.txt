@@ -1,6 +1,6 @@
-matplotlib==3.10.7
-click==8.3.0
-pandas==2.3.3
-seaborn==0.13.2
-pyarrow==22.0.0
-dask[distributed]==2024.10.1
+matplotlib>=3.10.7
+click>=8.3.0
+pandas>=2.3.3
+seaborn>=0.13.2
+pyarrow>=22.0.0
+dask[distributed]>=2024.10.0
