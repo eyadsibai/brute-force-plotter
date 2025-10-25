@@ -230,6 +230,77 @@ When contributing, please:
 3. Aim for >90% code coverage for new code
 4. Use the fixtures in `conftest.py` for test data
 
+## Development
+
+### Setting Up for Development
+
+When developing for this project, it's important to set up code quality tools to ensure consistency:
+
+**1. Install Development Dependencies**
+
+Using UV:
+```bash
+$ uv sync  # Installs all dependencies including dev tools
+```
+
+Using pip:
+```bash
+$ pip install -r requirements.txt
+$ pip install pytest pytest-cov ruff pre-commit
+```
+
+**2. Install Pre-commit Hooks (REQUIRED)**
+
+This project uses [pre-commit](https://pre-commit.com/) hooks to automatically enforce code quality standards on every commit:
+
+```bash
+$ pre-commit install
+```
+
+After installation, the hooks will run automatically on `git commit` and check:
+- ✅ Ruff linting (with auto-fix)
+- ✅ Ruff formatting
+- ✅ Trailing whitespace removal
+- ✅ End-of-file fixes
+- ✅ YAML/JSON/TOML validation
+- ✅ Large file detection
+
+**3. Manual Code Quality Checks**
+
+You can also run these checks manually:
+
+```bash
+# Lint code (check for issues)
+$ ruff check .
+
+# Lint and auto-fix issues
+$ ruff check --fix .
+
+# Format code
+$ ruff format .
+
+# Run all pre-commit hooks on all files
+$ pre-commit run --all-files
+```
+
+**4. Running Tests**
+
+Always run tests before submitting changes:
+
+```bash
+$ pytest
+```
+
+### Why Pre-commit Hooks?
+
+Pre-commit hooks ensure that:
+- All code follows consistent style guidelines
+- Linting issues are caught before they reach CI
+- Code quality is maintained automatically
+- Review cycles are faster (no style nitpicks)
+
+**Note:** If you try to commit code that doesn't pass the checks, the commit will be blocked. Fix the issues reported and commit again.
+
 ## Recent Updates (2025)
 
 ✅ Updated all dependencies to latest stable versions
