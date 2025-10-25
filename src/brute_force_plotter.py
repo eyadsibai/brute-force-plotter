@@ -17,6 +17,7 @@ import tempfile
 
 import click
 import dask
+import folium
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -468,6 +469,41 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
                     input_file, col2, col1, two_d_interactions_path
                 )
 
+    # Generate map visualizations for geocoordinate pairs
+    logger.info("Checking for geocoordinate pairs...")
+    geo_pairs = _detect_geocoordinate_pairs(dtypes)
+    
+    if geo_pairs:
+        logger.info(f"Generating map visualizations for {len(geo_pairs)} geocoordinate pairs...")
+        
+        # Create maps directory
+        maps_path = os.path.join(output_path, "maps")
+        make_sure_path_exists(maps_path)
+        
+        for lat_col, lon_col in geo_pairs:
+            # Create a simple map without categories
+            if use_dask:
+                plots.append(
+                    plot_map_visualization(input_file, lat_col, lon_col, maps_path)
+                )
+            else:
+                plot_map_visualization_sync(input_file, lat_col, lon_col, maps_path)
+            
+            # Create maps with categorical overlays
+            category_cols = [col for col, dtype in dtypes.items() if dtype == "c"]
+            for cat_col in category_cols:
+                if cat_col not in ignore:
+                    if use_dask:
+                        plots.append(
+                            plot_map_visualization(
+                                input_file, lat_col, lon_col, maps_path, cat_col
+                            )
+                        )
+                    else:
+                        plot_map_visualization_sync(
+                            input_file, lat_col, lon_col, maps_path, cat_col
+                        )
+
             # for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
             # dtypes.items(), 3):
             #     print(col1, col2, col3)
@@ -679,6 +715,340 @@ def plot_missing_values(input_file, dtypes, path):
         missing_plot(missing_data, file_name=file_name)
     else:
         logger.info("No missing values found in the dataset")
+
+
+def _detect_geocoordinate_pairs(dtypes):
+    """
+    Detect pairs of columns that represent geocoordinates (latitude/longitude).
+    
+    This function looks for:
+    - Columns with 'g' data type (explicit geocoordinate marking)
+    - Common lat/lon naming patterns in numeric columns
+    
+    Parameters
+    ----------
+    dtypes : dict
+        Dictionary mapping column names to data types
+        
+    Returns
+    -------
+    list of tuple
+        List of (latitude_col, longitude_col) pairs
+    """
+    geo_pairs = []
+    
+    # Get columns marked as geocoordinates
+    geo_cols = [col for col, dtype in dtypes.items() if dtype == "g"]
+    
+    # Common patterns for latitude and longitude
+    lat_patterns = ["lat", "latitude", "y", "y_coord"]
+    lon_patterns = ["lon", "long", "longitude", "lng", "x", "x_coord"]
+    
+    # First, try to pair explicitly marked geocoordinate columns
+    if len(geo_cols) >= 2:
+        # Try to identify lat/lon by name patterns
+        for lat_col in geo_cols:
+            for lon_col in geo_cols:
+                if lat_col != lon_col:
+                    lat_lower = lat_col.lower()
+                    lon_lower = lon_col.lower()
+                    
+                    # Check if names match common patterns
+                    is_lat = any(pattern in lat_lower for pattern in lat_patterns)
+                    is_lon = any(pattern in lon_lower for pattern in lon_patterns)
+                    
+                    if is_lat and is_lon and (lat_col, lon_col) not in geo_pairs:
+                        geo_pairs.append((lat_col, lon_col))
+                        break
+    
+    # Also check for common lat/lon patterns in numeric columns
+    # This is a fallback for backward compatibility
+    numeric_cols = [col for col, dtype in dtypes.items() if dtype == "n"]
+    
+    for col1 in numeric_cols:
+        for col2 in numeric_cols:
+            if col1 != col2 and (col1, col2) not in geo_pairs:
+                col1_lower = col1.lower()
+                col2_lower = col2.lower()
+                
+                is_lat1 = any(pattern in col1_lower for pattern in lat_patterns)
+                is_lon2 = any(pattern in col2_lower for pattern in lon_patterns)
+                
+                if is_lat1 and is_lon2:
+                    geo_pairs.append((col1, col2))
+                    
+    logger.info(f"Detected {len(geo_pairs)} geocoordinate pairs: {geo_pairs}")
+    return geo_pairs
+
+
+@dask.delayed
+def plot_map_visualization(input_file, lat_col, lon_col, path, category_col=None):
+    """
+    Create an interactive map visualization using geocoordinates.
+    
+    Parameters
+    ----------
+    input_file : str
+        Path to the parquet file
+    lat_col : str
+        Name of the latitude column
+    lon_col : str
+        Name of the longitude column
+    path : str
+        Output directory path
+    category_col : str, optional
+        Name of a categorical column to use for coloring points
+    """
+    columns_to_read = [lat_col, lon_col]
+    if category_col:
+        columns_to_read.append(category_col)
+    
+    df = pd.read_parquet(input_file, columns=columns_to_read)
+    
+    # Remove rows with missing geocoordinates
+    df_clean = df.dropna(subset=[lat_col, lon_col])
+    
+    if len(df_clean) == 0:
+        logger.warning(
+            f"No valid geocoordinates found in {lat_col} and {lon_col}"
+        )
+        return
+    
+    # Validate coordinate ranges
+    lat_valid = df_clean[
+        (df_clean[lat_col] >= -90) & (df_clean[lat_col] <= 90)
+    ]
+    lon_valid = lat_valid[
+        (lat_valid[lon_col] >= -180) & (lat_valid[lon_col] <= 180)
+    ]
+    
+    if len(lon_valid) == 0:
+        logger.warning(
+            f"No valid coordinate ranges in {lat_col} and {lon_col}"
+        )
+        return
+    
+    df_clean = lon_valid
+    
+    # Create base filename
+    if category_col:
+        base_filename = f"{lat_col}-{lon_col}-{category_col}-map.html"
+    else:
+        base_filename = f"{lat_col}-{lon_col}-map.html"
+    
+    file_name = os.path.join(path, base_filename)
+    
+    # Skip if file exists and skip_existing_plots is True
+    if skip_existing_plots and os.path.isfile(file_name):
+        logger.info(f"Skipping existing map: {file_name}")
+        return
+    
+    # Calculate center of the map
+    center_lat = df_clean[lat_col].mean()
+    center_lon = df_clean[lon_col].mean()
+    
+    # Create folium map
+    m = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=10,
+        tiles="OpenStreetMap"
+    )
+    
+    # Add markers
+    if category_col and category_col in df_clean.columns:
+        # Color code by category
+        categories = df_clean[category_col].unique()
+        colors = [
+            'red', 'blue', 'green', 'purple', 'orange', 
+            'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen',
+            'cadetblue', 'darkpurple', 'white', 'pink', 'lightblue',
+            'lightgreen', 'gray', 'black', 'lightgray'
+        ]
+        
+        # Create a mapping from category to color
+        cat_to_color = {
+            cat: colors[i % len(colors)] 
+            for i, cat in enumerate(categories)
+        }
+        
+        # Add markers with category-based colors
+        for idx, row in df_clean.iterrows():
+            folium.CircleMarker(
+                location=[row[lat_col], row[lon_col]],
+                radius=5,
+                popup=f"{category_col}: {row[category_col]}",
+                color=cat_to_color.get(row[category_col], 'blue'),
+                fill=True,
+                fillColor=cat_to_color.get(row[category_col], 'blue'),
+                fillOpacity=0.6
+            ).add_to(m)
+        
+        # Add legend
+        legend_html = '''
+        <div style="position: fixed; 
+                    bottom: 50px; right: 50px; 
+                    border:2px solid grey; z-index:9999; 
+                    background-color:white;
+                    padding: 10px;
+                    font-size:14px;">
+        <p style="margin:0; font-weight:bold;">{}</p>
+        '''.format(category_col)
+        
+        for cat, color in cat_to_color.items():
+            legend_html += f'''
+            <p style="margin:5px 0;">
+                <span style="background-color:{color}; 
+                            width:15px; height:15px; 
+                            display:inline-block; 
+                            margin-right:5px;"></span>
+                {cat}
+            </p>
+            '''
+        legend_html += '</div>'
+        m.get_root().html.add_child(folium.Element(legend_html))
+    else:
+        # Simple blue markers
+        for idx, row in df_clean.iterrows():
+            folium.CircleMarker(
+                location=[row[lat_col], row[lon_col]],
+                radius=5,
+                popup=f"Lat: {row[lat_col]:.4f}, Lon: {row[lon_col]:.4f}",
+                color='blue',
+                fill=True,
+                fillColor='blue',
+                fillOpacity=0.6
+            ).add_to(m)
+    
+    # Save map
+    m.save(file_name)
+    logger.info(f"Map saved to: {file_name}")
+
+
+def plot_map_visualization_sync(input_file, lat_col, lon_col, path, category_col=None):
+    """Non-delayed version for synchronous execution"""
+    columns_to_read = [lat_col, lon_col]
+    if category_col:
+        columns_to_read.append(category_col)
+    
+    df = pd.read_parquet(input_file, columns=columns_to_read)
+    
+    # Remove rows with missing geocoordinates
+    df_clean = df.dropna(subset=[lat_col, lon_col])
+    
+    if len(df_clean) == 0:
+        logger.warning(
+            f"No valid geocoordinates found in {lat_col} and {lon_col}"
+        )
+        return
+    
+    # Validate coordinate ranges
+    lat_valid = df_clean[
+        (df_clean[lat_col] >= -90) & (df_clean[lat_col] <= 90)
+    ]
+    lon_valid = lat_valid[
+        (lat_valid[lon_col] >= -180) & (lat_valid[lon_col] <= 180)
+    ]
+    
+    if len(lon_valid) == 0:
+        logger.warning(
+            f"No valid coordinate ranges in {lat_col} and {lon_col}"
+        )
+        return
+    
+    df_clean = lon_valid
+    
+    # Create base filename
+    if category_col:
+        base_filename = f"{lat_col}-{lon_col}-{category_col}-map.html"
+    else:
+        base_filename = f"{lat_col}-{lon_col}-map.html"
+    
+    file_name = os.path.join(path, base_filename)
+    
+    # Skip if file exists and skip_existing_plots is True
+    if skip_existing_plots and os.path.isfile(file_name):
+        logger.info(f"Skipping existing map: {file_name}")
+        return
+    
+    # Calculate center of the map
+    center_lat = df_clean[lat_col].mean()
+    center_lon = df_clean[lon_col].mean()
+    
+    # Create folium map
+    m = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=10,
+        tiles="OpenStreetMap"
+    )
+    
+    # Add markers
+    if category_col and category_col in df_clean.columns:
+        # Color code by category
+        categories = df_clean[category_col].unique()
+        colors = [
+            'red', 'blue', 'green', 'purple', 'orange', 
+            'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen',
+            'cadetblue', 'darkpurple', 'white', 'pink', 'lightblue',
+            'lightgreen', 'gray', 'black', 'lightgray'
+        ]
+        
+        # Create a mapping from category to color
+        cat_to_color = {
+            cat: colors[i % len(colors)] 
+            for i, cat in enumerate(categories)
+        }
+        
+        # Add markers with category-based colors
+        for idx, row in df_clean.iterrows():
+            folium.CircleMarker(
+                location=[row[lat_col], row[lon_col]],
+                radius=5,
+                popup=f"{category_col}: {row[category_col]}",
+                color=cat_to_color.get(row[category_col], 'blue'),
+                fill=True,
+                fillColor=cat_to_color.get(row[category_col], 'blue'),
+                fillOpacity=0.6
+            ).add_to(m)
+        
+        # Add legend
+        legend_html = '''
+        <div style="position: fixed; 
+                    bottom: 50px; right: 50px; 
+                    border:2px solid grey; z-index:9999; 
+                    background-color:white;
+                    padding: 10px;
+                    font-size:14px;">
+        <p style="margin:0; font-weight:bold;">{}</p>
+        '''.format(category_col)
+        
+        for cat, color in cat_to_color.items():
+            legend_html += f'''
+            <p style="margin:5px 0;">
+                <span style="background-color:{color}; 
+                            width:15px; height:15px; 
+                            display:inline-block; 
+                            margin-right:5px;"></span>
+                {cat}
+            </p>
+            '''
+        legend_html += '</div>'
+        m.get_root().html.add_child(folium.Element(legend_html))
+    else:
+        # Simple blue markers
+        for idx, row in df_clean.iterrows():
+            folium.CircleMarker(
+                location=[row[lat_col], row[lon_col]],
+                radius=5,
+                popup=f"Lat: {row[lat_col]:.4f}, Lon: {row[lon_col]:.4f}",
+                color='blue',
+                fill=True,
+                fillColor='blue',
+                fillOpacity=0.6
+            ).add_to(m)
+    
+    # Save map
+    m.save(file_name)
+    logger.info(f"Map saved to: {file_name}")
 
 
 def export_statistical_summaries(input_file, dtypes, output_path):
