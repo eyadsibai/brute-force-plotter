@@ -13,11 +13,29 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import brute_force_plotter as bfp
 
-# Example 1: Load data from CSV and create plots
-print("Example 1: Creating plots from CSV data")
+# Example 1: Automatic data type inference (NEW!)
+print("Example 1: Using automatic data type inference")
 data = pd.read_csv(os.path.join(os.path.dirname(__file__), "titanic.csv"))
 
-# Define data types
+# Let the library automatically infer data types
+output_dir, inferred_dtypes = bfp.plot(
+    data,
+    output_path="./output_auto_inference",
+    show=False,
+    use_dask=False,
+    export_stats=True,
+)
+
+print(f"✓ Plots saved to: {output_dir}")
+print(f"✓ Inferred data types:")
+for col, dtype in sorted(inferred_dtypes.items()):
+    dtype_name = {"n": "numeric", "c": "categorical", "i": "ignore"}[dtype]
+    print(f"    {col:15} -> {dtype_name}")
+
+# Example 2: Manual data type definition
+print("\nExample 2: Creating plots with manual data types")
+
+# Define data types manually
 # 'n' = numeric, 'c' = category, 'i' = ignore
 dtypes = {
     "Survived": "c",
@@ -47,9 +65,29 @@ output_dir = bfp.plot(
 print(f"✓ Plots saved to: {output_dir}")
 print(f"✓ Statistical summaries exported to: {output_dir}/statistics/")
 
-# Example 2: Creating plots from a DataFrame and showing them interactively
+# Example 3: Infer types first, then modify if needed
+print("\nExample 3: Infer types, then customize")
+
+# Infer data types
+auto_dtypes = bfp.infer_dtypes(data)
+
+# Customize some inferred types if needed
+auto_dtypes["Age"] = "c"  # Treat age as categorical instead of numeric
+auto_dtypes["Fare"] = "c"  # Treat fare as categorical instead of numeric
+
+output_dir3 = bfp.plot(
+    data,
+    auto_dtypes,
+    output_path="./output_custom",
+    show=False,
+    use_dask=False,
+)
+
+print(f"✓ Custom plots saved to: {output_dir3}")
+
+# Example 4: Creating plots from a simple DataFrame and showing them interactively
 # (Uncomment to test interactive display)
-# print("\nExample 2: Showing plots interactively")
+# print("\nExample 4: Showing plots interactively")
 # simple_dtypes = {
 #     'Age': 'n',
 #     'Fare': 'n',
@@ -63,8 +101,8 @@ print(f"✓ Statistical summaries exported to: {output_dir}/statistics/")
 #     show=True  # Display plots instead of saving
 # )
 
-# Example 3: Creating a simple dataset and plotting
-print("\nExample 3: Creating plots from a simple DataFrame")
+# Example 5: Creating a simple dataset with automatic inference
+print("\nExample 5: Simple DataFrame with auto inference")
 
 # Create a simple dataset
 simple_data = pd.DataFrame(
@@ -87,16 +125,16 @@ simple_data = pd.DataFrame(
     }
 )
 
-simple_dtypes = {"height": "n", "weight": "n", "gender": "c", "age_group": "c"}
-
-output_dir2 = bfp.plot(
+# Use automatic inference
+output_dir5, simple_dtypes = bfp.plot(
     simple_data,
-    simple_dtypes,
     output_path="./simple_output",
     show=False,
     use_dask=False,
 )
 
-print(f"✓ Simple plots saved to: {output_dir2}")
+print(f"✓ Simple plots saved to: {output_dir5}")
+print(f"✓ Auto-inferred types: {simple_dtypes}")
 
 print("\n✓ All examples completed successfully!")
+
