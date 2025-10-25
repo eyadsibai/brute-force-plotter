@@ -200,3 +200,16 @@ The tool automatically generates:
 ✅ Added skip-existing-plots option
 ✅ Improved logging and progress indicators
 ✅ Code cleanup and better error handling
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
+
+- Setting up your development environment
+- Using code quality tools (Ruff, pre-commit)
+- Submitting pull requests
+- Coding standards and best practices
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
