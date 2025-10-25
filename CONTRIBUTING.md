@@ -124,7 +124,11 @@ The pre-commit configuration includes:
 - End-of-file fixer
 - YAML, JSON, and TOML validation
 - Large file checks
-- Security checks with Bandit
+- Merge conflict detection
+
+**Note:** If you experience network timeouts during the first `git commit` after installing pre-commit hooks, you can:
+- Skip the hooks for that commit: `git commit --no-verify -m "Your message"`
+- Or manually run the checks before committing: `ruff check --fix . && ruff format .`
 
 ## Making Changes
 
