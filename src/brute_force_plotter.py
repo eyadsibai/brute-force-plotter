@@ -436,16 +436,44 @@ def plot_timeseries_numeric_sync(input_file, time_col, numeric_col, path):
 
 @dask.delayed
 def plot_timeseries_timeseries(input_file, time_col1, time_col2, path):
-    """Plot two time series together (multiple time series overlay)"""
+    """
+    Plot two datetime series showing their temporal coverage and overlap.
+    Creates a timeline visualization showing when each time series has data.
+    """
     df = pd.read_parquet(input_file, columns=[time_col1, time_col2])
     # Convert to datetime if not already
     if not pd.api.types.is_datetime64_any_dtype(df[time_col1]):
         df[time_col1] = pd.to_datetime(df[time_col1])
     if not pd.api.types.is_datetime64_any_dtype(df[time_col2]):
         df[time_col2] = pd.to_datetime(df[time_col2])
-    # Use the first time column as x-axis and plot the second as a line
+
+    # Create a temporal coverage comparison plot
     file_name = os.path.join(path, f"{time_col1}-{time_col2}-timeseries-comparison.png")
-    multiple_time_series_plot(df, time_col1, [time_col2], file_name=file_name)
+
+    # Create figure with two subplots showing both timelines
+    import matplotlib.pyplot as plt
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+    # Plot first time series
+    ax1.plot(df[time_col1], range(len(df)), linewidth=1.5, marker="o", markersize=2)
+    ax1.set_ylabel("Observation Index")
+    ax1.set_title(f"Timeline: {time_col1}")
+    ax1.grid(True, alpha=0.3)
+
+    # Plot second time series
+    ax2.plot(df[time_col2], range(len(df)), linewidth=1.5, marker="o", markersize=2)
+    ax2.set_xlabel("Time")
+    ax2.set_ylabel("Observation Index")
+    ax2.set_title(f"Timeline: {time_col2}")
+    ax2.grid(True, alpha=0.3)
+
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    if file_name:
+        plt.savefig(file_name, dpi=120)
+    plt.close("all")
 
 
 def plot_timeseries_timeseries_sync(input_file, time_col1, time_col2, path):
@@ -456,8 +484,34 @@ def plot_timeseries_timeseries_sync(input_file, time_col1, time_col2, path):
         df[time_col1] = pd.to_datetime(df[time_col1])
     if not pd.api.types.is_datetime64_any_dtype(df[time_col2]):
         df[time_col2] = pd.to_datetime(df[time_col2])
+
+    # Create a temporal coverage comparison plot
     file_name = os.path.join(path, f"{time_col1}-{time_col2}-timeseries-comparison.png")
-    multiple_time_series_plot(df, time_col1, [time_col2], file_name=file_name)
+
+    # Create figure with two subplots showing both timelines
+    import matplotlib.pyplot as plt
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+    # Plot first time series
+    ax1.plot(df[time_col1], range(len(df)), linewidth=1.5, marker="o", markersize=2)
+    ax1.set_ylabel("Observation Index")
+    ax1.set_title(f"Timeline: {time_col1}")
+    ax1.grid(True, alpha=0.3)
+
+    # Plot second time series
+    ax2.plot(df[time_col2], range(len(df)), linewidth=1.5, marker="o", markersize=2)
+    ax2.set_xlabel("Time")
+    ax2.set_ylabel("Observation Index")
+    ax2.set_title(f"Timeline: {time_col2}")
+    ax2.grid(True, alpha=0.3)
+
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    if file_name:
+        plt.savefig(file_name, dpi=120)
+    plt.close("all")
 
 
 @dask.delayed
@@ -825,12 +879,13 @@ def missing_plot(data, file_name=None):
 
 @ignore_if_exist_or_save
 def time_series_line_plot(data, time_col, file_name=None):
-    """Create a line plot for a single time series"""
+    """Create a timeline plot showing the distribution of datetime values"""
     plt.figure(figsize=(12, 6))
-    plt.plot(data[time_col], linewidth=1.5)
+    # Plot datetime index as a timeline
+    plt.plot(data[time_col], range(len(data)), linewidth=1.5)
     plt.xlabel("Time")
-    plt.ylabel(time_col)
-    plt.title(f"Time Series: {time_col}")
+    plt.ylabel("Observation Index")
+    plt.title(f"Timeline: {time_col}")
     plt.xticks(rotation=45)
     plt.grid(True, alpha=0.3)
     sns.despine()
