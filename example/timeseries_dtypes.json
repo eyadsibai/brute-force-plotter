@@ -1,0 +1,10 @@
+{
+  "date": "t",
+  "temperature": "n",
+  "sales": "n",
+  "stock_price": "n",
+  "customer_count": "n",
+  "store_location": "c",
+  "region": "c",
+  "id": "i"
+}
