@@ -749,8 +749,9 @@ def _detect_geocoordinate_pairs(dtypes):
     geo_cols = [col for col, dtype in dtypes.items() if dtype == "g"]
 
     # Common patterns for latitude and longitude
-    lat_patterns = ["lat", "latitude", "y", "y_coord"]
-    lon_patterns = ["lon", "long", "longitude", "lng", "x", "x_coord"]
+    # Avoid single-letter patterns to prevent false positives
+    lat_patterns = ["lat", "latitude", "y_coord", "lat_coord"]
+    lon_patterns = ["lon", "long", "longitude", "lng", "x_coord", "lon_coord"]
 
     # First, try to pair explicitly marked geocoordinate columns
     if len(geo_cols) >= 2:
@@ -820,12 +821,8 @@ def _create_map_visualization(input_file, lat_col, lon_col, path, category_col=N
         return
 
     # Validate coordinate ranges
-    lat_valid = df_clean[
-        (df_clean[lat_col] >= -90) & (df_clean[lat_col] <= 90)
-    ]
-    lon_valid = lat_valid[
-        (lat_valid[lon_col] >= -180) & (lat_valid[lon_col] <= 180)
-    ]
+    lat_valid = df_clean[(df_clean[lat_col] >= -90) & (df_clean[lat_col] <= 90)]
+    lon_valid = lat_valid[(lat_valid[lon_col] >= -180) & (lat_valid[lon_col] <= 180)]
 
     if len(lon_valid) == 0:
         logger.warning(f"No valid coordinate ranges in {lat_col} and {lon_col}")
@@ -857,35 +854,30 @@ def _create_map_visualization(input_file, lat_col, lon_col, path, category_col=N
 
     # Add markers
     if category_col and category_col in df_clean.columns:
-        # Color code by category
+        # Color code by category using matplotlib colormap for unlimited categories
+        import matplotlib.colors as mcolors
+
         categories = df_clean[category_col].unique()
+        n_categories = len(categories)
+
+        # Use tab20 colormap for up to 20 categories, then tab20b/tab20c for more
+        if n_categories <= 20:
+            cmap = plt.cm.get_cmap("tab20")
+        else:
+            # For more than 20 categories, use a continuous colormap
+            cmap = plt.cm.get_cmap("hsv")
+
+        # Generate colors and convert to hex format for folium
         colors = [
-            "red",
-            "blue",
-            "green",
-            "purple",
-            "orange",
-            "darkred",
-            "lightred",
-            "beige",
-            "darkblue",
-            "darkgreen",
-            "cadetblue",
-            "darkpurple",
-            "white",
-            "pink",
-            "lightblue",
-            "lightgreen",
-            "gray",
-            "black",
-            "lightgray",
+            mcolors.rgb2hex(cmap(i / max(n_categories - 1, 1))[:3])
+            for i in range(n_categories)
         ]
 
         # Create a mapping from category to color
-        cat_to_color = {cat: colors[i % len(colors)] for i, cat in enumerate(categories)}
+        cat_to_color = {cat: colors[i] for i, cat in enumerate(categories)}
 
         # Add markers with category-based colors
-        for idx, row in df_clean.iterrows():
+        for _idx, row in df_clean.iterrows():
             folium.CircleMarker(
                 location=[row[lat_col], row[lon_col]],
                 radius=5,
@@ -897,17 +889,15 @@ def _create_map_visualization(input_file, lat_col, lon_col, path, category_col=N
             ).add_to(m)
 
         # Add legend
-        legend_html = """
+        legend_html = f"""
         <div style="position: fixed;
                     bottom: 50px; right: 50px;
                     border:2px solid grey; z-index:9999;
                     background-color:white;
                     padding: 10px;
                     font-size:14px;">
-        <p style="margin:0; font-weight:bold;">{}</p>
-        """.format(
-            category_col
-        )
+        <p style="margin:0; font-weight:bold;">{category_col}</p>
+        """
 
         for cat, color in cat_to_color.items():
             legend_html += f"""
@@ -923,7 +913,7 @@ def _create_map_visualization(input_file, lat_col, lon_col, path, category_col=N
         m.get_root().html.add_child(folium.Element(legend_html))
     else:
         # Simple blue markers
-        for idx, row in df_clean.iterrows():
+        for _idx, row in df_clean.iterrows():
             folium.CircleMarker(
                 location=[row[lat_col], row[lon_col]],
                 radius=5,

@@ -3,7 +3,6 @@ Unit tests for map visualization functions in brute_force_plotter.
 """
 
 import os
-import tempfile
 
 import pandas as pd
 import pytest
@@ -146,19 +145,14 @@ class TestMapVisualization:
             }
         )
 
-        with tempfile.NamedTemporaryFile(suffix=".parq", delete=False) as tmp:
-            parquet_path = tmp.name
+        parquet_path = os.path.join(temp_dir, "missing_coords.parq")
         data.to_parquet(parquet_path)
 
-        try:
-            plot_map_visualization_sync(parquet_path, "latitude", "longitude", temp_dir)
+        plot_map_visualization_sync(parquet_path, "latitude", "longitude", temp_dir)
 
-            # Should still create a map with valid coordinates
-            expected_file = os.path.join(temp_dir, "latitude-longitude-map.html")
-            assert os.path.exists(expected_file)
-        finally:
-            if os.path.exists(parquet_path):
-                os.remove(parquet_path)
+        # Should still create a map with valid coordinates
+        expected_file = os.path.join(temp_dir, "latitude-longitude-map.html")
+        assert os.path.exists(expected_file)
 
     @pytest.mark.unit
     def test_handles_invalid_coordinate_ranges(self, temp_dir):
@@ -170,19 +164,14 @@ class TestMapVisualization:
             }
         )
 
-        with tempfile.NamedTemporaryFile(suffix=".parq", delete=False) as tmp:
-            parquet_path = tmp.name
+        parquet_path = os.path.join(temp_dir, "invalid_coords.parq")
         data.to_parquet(parquet_path)
 
-        try:
-            plot_map_visualization_sync(parquet_path, "latitude", "longitude", temp_dir)
+        plot_map_visualization_sync(parquet_path, "latitude", "longitude", temp_dir)
 
-            # Should create a map only with valid coordinates
-            expected_file = os.path.join(temp_dir, "latitude-longitude-map.html")
-            assert os.path.exists(expected_file)
-        finally:
-            if os.path.exists(parquet_path):
-                os.remove(parquet_path)
+        # Should create a map only with valid coordinates
+        expected_file = os.path.join(temp_dir, "latitude-longitude-map.html")
+        assert os.path.exists(expected_file)
 
     @pytest.mark.unit
     def test_skips_existing_map(self, temp_dir, geo_parquet_file):
@@ -216,20 +205,15 @@ class TestMapVisualization:
             }
         )
 
-        with tempfile.NamedTemporaryFile(suffix=".parq", delete=False) as tmp:
-            parquet_path = tmp.name
+        parquet_path = os.path.join(temp_dir, "all_invalid.parq")
         data.to_parquet(parquet_path)
 
-        try:
-            # Should not crash, just log warning
-            plot_map_visualization_sync(parquet_path, "latitude", "longitude", temp_dir)
+        # Should not crash, just log warning
+        plot_map_visualization_sync(parquet_path, "latitude", "longitude", temp_dir)
 
-            # No map file should be created
-            expected_file = os.path.join(temp_dir, "latitude-longitude-map.html")
-            assert not os.path.exists(expected_file)
-        finally:
-            if os.path.exists(parquet_path):
-                os.remove(parquet_path)
+        # No map file should be created
+        expected_file = os.path.join(temp_dir, "latitude-longitude-map.html")
+        assert not os.path.exists(expected_file)
 
 
 class TestMapIntegration:
