@@ -93,6 +93,22 @@ ruff format --check .
 ruff format .
 ```
 
+### Bandit (Security Checks)
+
+[Bandit](https://github.com/PyCQA/bandit) is a tool for finding common security issues in Python code. While configured in `pyproject.toml`, it runs separately from pre-commit hooks.
+
+**Usage:**
+```bash
+# Install bandit
+pip install bandit
+
+# Run security checks
+bandit -c pyproject.toml -r src/
+
+# Run on specific file
+bandit -c pyproject.toml src/brute_force_plotter.py
+```
+
 ### Pre-commit Hooks
 
 Pre-commit hooks automatically check your code before each commit, ensuring code quality standards are met.
@@ -126,7 +142,9 @@ The pre-commit configuration includes:
 - Large file checks
 - Merge conflict detection
 
-**Note:** If you experience network timeouts during the first `git commit` after installing pre-commit hooks, you can:
+**Note:** Bandit security checks are configured but not included in pre-commit hooks. Run Bandit separately as shown above.
+
+**Troubleshooting:** If you experience network timeouts during the first `git commit` after installing pre-commit hooks, you can:
 - Skip the hooks for that commit: `git commit --no-verify -m "Your message"`
 - Or manually run the checks before committing: `ruff check --fix . && ruff format .`
 
