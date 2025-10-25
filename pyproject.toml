@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "brute-force-plotter"
 version = "0.1.0"
 description = "Tool to visualize data quickly with no brain usage for plot creation"
-readme = "README.rst"
+readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
