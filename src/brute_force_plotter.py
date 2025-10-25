@@ -131,6 +131,7 @@ def plot(
         Dictionary mapping column names to data types:
         - 'n' for numeric
         - 'c' for category
+        - 't' for time series (datetime)
         - 'i' for ignore
     output_path : str, optional
         Path to save plots. If None and show=False, uses a temporary directory.
@@ -391,6 +392,95 @@ def plot_category_numeric_sync(input_file, category_col, numeric_col, path):
     bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
 
+@dask.delayed
+def plot_single_timeseries(input_file, time_col, path):
+    """Plot a single time series column"""
+    df = pd.read_parquet(input_file, columns=[time_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-timeseries-plot.png")
+    time_series_line_plot(df, time_col, file_name=file_name)
+
+
+def plot_single_timeseries_sync(input_file, time_col, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[time_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-timeseries-plot.png")
+    time_series_line_plot(df, time_col, file_name=file_name)
+
+
+@dask.delayed
+def plot_timeseries_numeric(input_file, time_col, numeric_col, path):
+    """Plot numeric values over time"""
+    df = pd.read_parquet(input_file, columns=[time_col, numeric_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-{numeric_col}-timeseries-plot.png")
+    time_series_numeric_plot(df, time_col, numeric_col, file_name=file_name)
+
+
+def plot_timeseries_numeric_sync(input_file, time_col, numeric_col, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[time_col, numeric_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-{numeric_col}-timeseries-plot.png")
+    time_series_numeric_plot(df, time_col, numeric_col, file_name=file_name)
+
+
+@dask.delayed
+def plot_timeseries_timeseries(input_file, time_col1, time_col2, path):
+    """Plot two time series together (multiple time series overlay)"""
+    df = pd.read_parquet(input_file, columns=[time_col1, time_col2])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col1]):
+        df[time_col1] = pd.to_datetime(df[time_col1])
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col2]):
+        df[time_col2] = pd.to_datetime(df[time_col2])
+    # Use the first time column as x-axis and plot the second as a line
+    file_name = os.path.join(path, f"{time_col1}-{time_col2}-timeseries-comparison.png")
+    multiple_time_series_plot(df, time_col1, [time_col2], file_name=file_name)
+
+
+def plot_timeseries_timeseries_sync(input_file, time_col1, time_col2, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[time_col1, time_col2])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col1]):
+        df[time_col1] = pd.to_datetime(df[time_col1])
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col2]):
+        df[time_col2] = pd.to_datetime(df[time_col2])
+    file_name = os.path.join(path, f"{time_col1}-{time_col2}-timeseries-comparison.png")
+    multiple_time_series_plot(df, time_col1, [time_col2], file_name=file_name)
+
+
+@dask.delayed
+def plot_timeseries_category_numeric(input_file, time_col, category_col, numeric_col, path):
+    """Plot numeric values over time grouped by category"""
+    df = pd.read_parquet(input_file, columns=[time_col, category_col, numeric_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-{numeric_col}-by-{category_col}-timeseries.png")
+    time_series_category_plot(df, time_col, numeric_col, category_col, file_name=file_name)
+
+
+def plot_timeseries_category_numeric_sync(input_file, time_col, category_col, numeric_col, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[time_col, category_col, numeric_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-{numeric_col}-by-{category_col}-timeseries.png")
+    time_series_category_plot(df, time_col, numeric_col, category_col, file_name=file_name)
+
+
 def create_plots(input_file, dtypes, output_path, use_dask=True):
     distributions_path, two_d_interactions_path, three_d_interactions_path = (
         _create_directories(output_path)
@@ -416,6 +506,11 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
                 plots.append(plot_single_category(input_file, col, distributions_path))
             else:
                 plot_single_category_sync(input_file, col, distributions_path)
+        if dtype == "t":
+            if use_dask:
+                plots.append(plot_single_timeseries(input_file, col, distributions_path))
+            else:
+                plot_single_timeseries_sync(input_file, col, distributions_path)
 
     for (col1, dtype1), (col2, dtype2) in combinations(dtypes.items(), 2):
         print(col1, col2)
@@ -467,6 +562,40 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
                 plot_category_numeric_sync(
                     input_file, col2, col1, two_d_interactions_path
                 )
+        # Time series interactions
+        if dtype1 == "t" and dtype2 == "n":
+            if use_dask:
+                plots.append(
+                    plot_timeseries_numeric(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
+                )
+            else:
+                plot_timeseries_numeric_sync(
+                    input_file, col1, col2, two_d_interactions_path
+                )
+        if dtype1 == "n" and dtype2 == "t":
+            if use_dask:
+                plots.append(
+                    plot_timeseries_numeric(
+                        input_file, col2, col1, two_d_interactions_path
+                    )
+                )
+            else:
+                plot_timeseries_numeric_sync(
+                    input_file, col2, col1, two_d_interactions_path
+                )
+        if dtype1 == dtype2 == "t":
+            if use_dask:
+                plots.append(
+                    plot_timeseries_timeseries(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
+                )
+            else:
+                plot_timeseries_timeseries_sync(
+                    input_file, col1, col2, two_d_interactions_path
+                )
 
             # for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
             # dtypes.items(), 3):
@@ -500,6 +629,53 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
             # if dtype1 == 'n' and dtype2 == 'c' and dtype3 == 'n':
             #     plot_numeric_numeric_category(df, col1, col3, col2,
             #                                   three_d_interactions_path)
+    
+    # 3-way interactions: time series + category + numeric
+    for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(dtypes.items(), 3):
+        if dtype1 == "i" or dtype2 == "i" or dtype3 == "i":
+            continue
+        if any(col in ignore for col in [col1, col2, col3]):
+            continue
+        
+        # Find time, category, and numeric columns
+        time_col = None
+        category_col = None
+        numeric_col = None
+        
+        if dtype1 == "t":
+            time_col = col1
+        elif dtype2 == "t":
+            time_col = col2
+        elif dtype3 == "t":
+            time_col = col3
+        
+        if dtype1 == "c":
+            category_col = col1
+        elif dtype2 == "c":
+            category_col = col2
+        elif dtype3 == "c":
+            category_col = col3
+            
+        if dtype1 == "n":
+            numeric_col = col1
+        elif dtype2 == "n":
+            numeric_col = col2
+        elif dtype3 == "n":
+            numeric_col = col3
+        
+        # Plot if we have time + category + numeric
+        if time_col and category_col and numeric_col:
+            if use_dask:
+                plots.append(
+                    plot_timeseries_category_numeric(
+                        input_file, time_col, category_col, numeric_col, two_d_interactions_path
+                    )
+                )
+            else:
+                plot_timeseries_category_numeric_sync(
+                    input_file, time_col, category_col, numeric_col, two_d_interactions_path
+                )
+    
     return plots
 
 
@@ -621,6 +797,65 @@ def missing_plot(data, file_name=None):
     plt.xlabel("Columns")
     plt.ylabel("Rows")
     sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def time_series_line_plot(data, time_col, file_name=None):
+    """Create a line plot for a single time series"""
+    plt.figure(figsize=(12, 6))
+    plt.plot(data[time_col], linewidth=1.5)
+    plt.xlabel("Time")
+    plt.ylabel(time_col)
+    plt.title(f"Time Series: {time_col}")
+    plt.xticks(rotation=45)
+    plt.grid(True, alpha=0.3)
+    sns.despine()
+
+
+@ignore_if_exist_or_save
+def time_series_numeric_plot(data, time_col, numeric_col, file_name=None):
+    """Create a time series plot with numeric values on y-axis"""
+    plt.figure(figsize=(12, 6))
+    plt.plot(data[time_col], data[numeric_col], linewidth=1.5, marker='o', markersize=2)
+    plt.xlabel(time_col)
+    plt.ylabel(numeric_col)
+    plt.title(f"{numeric_col} over {time_col}")
+    plt.xticks(rotation=45)
+    plt.grid(True, alpha=0.3)
+    sns.despine()
+
+
+@ignore_if_exist_or_save
+def time_series_category_plot(data, time_col, numeric_col, category_col, file_name=None):
+    """Create a time series plot grouped by category"""
+    plt.figure(figsize=(12, 6))
+    for category in data[category_col].unique():
+        subset = data[data[category_col] == category]
+        plt.plot(subset[time_col], subset[numeric_col], 
+                linewidth=1.5, marker='o', markersize=2, label=category, alpha=0.7)
+    plt.xlabel(time_col)
+    plt.ylabel(numeric_col)
+    plt.title(f"{numeric_col} over {time_col} by {category_col}")
+    plt.xticks(rotation=45)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    sns.despine()
+
+
+@ignore_if_exist_or_save
+def multiple_time_series_plot(data, time_col, numeric_cols, file_name=None):
+    """Create an overlay plot for multiple time series"""
+    plt.figure(figsize=(12, 6))
+    for col in numeric_cols:
+        plt.plot(data[time_col], data[col], linewidth=1.5, marker='o', 
+                markersize=2, label=col, alpha=0.7)
+    plt.xlabel(time_col)
+    plt.ylabel("Value")
+    plt.title(f"Multiple Time Series over {time_col}")
+    plt.xticks(rotation=45)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    sns.despine()
 
 
 @dask.delayed
