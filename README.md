@@ -58,7 +58,7 @@ bfp.plot(data, dtypes, output_path='./plots')
 bfp.plot(data, dtypes, show=True)
 ```
 
-See [example/library_usage_example.py](https://github.com/eyadsibai/brute_force_plotter/example/library_usage_example.py) for more examples.
+See [example/library_usage_example.py](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/library_usage_example.py) for more examples.
 
 **As a Command-Line Tool**
 
@@ -143,8 +143,8 @@ bfp.plot(data, dtypes, output_path='./plots', no_sample=True)
 ## Arguments
 
 - json.dump({k:v.name for k,v in df.dtypes.to_dict().items()},open('dtypes.json','w'))  
-- the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute_force_plotter/example/titanic.csv)
-- second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json)
+- the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/titanic.csv)
+- second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/titanic_dtypes.json)
 
 ```json
 {
