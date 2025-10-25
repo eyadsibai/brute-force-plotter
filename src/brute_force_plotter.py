@@ -32,6 +32,10 @@ skip_existing_plots = True  # Global flag for skipping existing plots
 _show_plots = False
 _save_plots = True
 
+# Large dataset configuration
+DEFAULT_MAX_ROWS = 100000  # Default threshold for sampling
+DEFAULT_SAMPLE_SIZE = 50000  # Default sample size for large datasets
+
 sns.set_style("darkgrid")
 sns.set_context("paper")
 
@@ -66,8 +70,35 @@ sns.set(rc={"figure.figsize": (8, 6)})
     default=False,
     help="Export statistical summary to CSV",
 )
+@click.option(
+    "--max-rows",
+    type=int,
+    default=DEFAULT_MAX_ROWS,
+    help="Maximum number of rows before sampling is applied",
+)
+@click.option(
+    "--sample-size",
+    type=int,
+    default=DEFAULT_SAMPLE_SIZE,
+    help="Number of rows to sample for large datasets",
+)
+@click.option(
+    "--no-sample",
+    is_flag=True,
+    default=False,
+    help="Disable sampling for large datasets (may cause memory issues)",
+)
 def main(
-    input_file, dtypes, output_path, skip_existing, theme, n_workers, export_stats
+    input_file,
+    dtypes,
+    output_path,
+    skip_existing,
+    theme,
+    n_workers,
+    export_stats,
+    max_rows,
+    sample_size,
+    no_sample,
 ):
     """Create Plots From data in input"""
     # Set matplotlib backend for CLI (non-interactive)
@@ -100,6 +131,18 @@ def main(
 
     # Only load non-ignored columns from CSV
     data = pd.read_csv(input_file, usecols=columns_to_load)
+
+    # Check and sample large datasets if necessary
+    data, was_sampled = check_and_sample_large_dataset(
+        data, max_rows=max_rows, sample_size=sample_size, no_sample=no_sample
+    )
+
+    if was_sampled:
+        logger.info(
+            "Note: Plots are generated from sampled data. "
+            "Statistical summaries (--export-stats) will still use the full dataset."
+        )
+
     new_file_name = f"{input_file}.parq"
     data.to_parquet(new_file_name)
 
@@ -107,8 +150,20 @@ def main(
     dask.compute(*plots)
 
     # Export statistical summaries if requested
+    # Note: For stats, we reload the full dataset to ensure accuracy
     if export_stats:
-        export_statistical_summaries(new_file_name, data_types, output_path)
+        if was_sampled:
+            # Reload full dataset for statistics
+            logger.info("Loading full dataset for statistical summary export...")
+            full_data = pd.read_csv(input_file, usecols=columns_to_load)
+            full_parquet = f"{input_file}.full.parq"
+            full_data.to_parquet(full_parquet)
+            export_statistical_summaries(full_parquet, data_types, output_path)
+            # Clean up full dataset parquet
+            if os.path.exists(full_parquet):
+                os.remove(full_parquet)
+        else:
+            export_statistical_summaries(new_file_name, data_types, output_path)
 
 
 def plot(
@@ -119,6 +174,9 @@ def plot(
     use_dask=False,
     n_workers=4,
     export_stats=False,
+    max_rows=DEFAULT_MAX_ROWS,
+    sample_size=DEFAULT_SAMPLE_SIZE,
+    no_sample=False,
 ):
     """
     Create plots from a pandas DataFrame.
@@ -144,6 +202,12 @@ def plot(
         Number of workers for Dask (only used if use_dask=True). Defaults to 4.
     export_stats : bool, optional
         If True, export statistical summaries to CSV files. Defaults to False.
+    max_rows : int, optional
+        Maximum number of rows before sampling is applied. Defaults to 100,000.
+    sample_size : int, optional
+        Number of rows to sample for large datasets. Defaults to 50,000.
+    no_sample : bool, optional
+        If True, disable sampling for large datasets. Defaults to False.
 
     Returns
     -------
@@ -166,6 +230,9 @@ def plot(
     >>>
     >>> # Export statistical summaries
     >>> bfp.plot(data, dtypes, output_path='./plots', export_stats=True)
+    >>>
+    >>> # Handle large datasets with sampling
+    >>> bfp.plot(data, dtypes, output_path='./plots', max_rows=50000, sample_size=25000)
     """
     global _show_plots, _save_plots
 
@@ -183,6 +250,18 @@ def plot(
 
     _show_plots = show
     _save_plots = not show or output_path is not None
+
+    # Check and sample large datasets if necessary
+    original_data = data
+    data, was_sampled = check_and_sample_large_dataset(
+        data, max_rows=max_rows, sample_size=sample_size, no_sample=no_sample
+    )
+
+    if was_sampled:
+        logger.info(
+            "Note: Plots are generated from sampled data. "
+            "Statistical summaries (if enabled) will use the full dataset."
+        )
 
     # Determine output path
     if output_path is None and not show:
@@ -219,14 +298,85 @@ def plot(
                     plot_task.compute()
 
         # Export statistical summaries if requested
+        # Use full dataset for stats if data was sampled
         if export_stats:
-            export_statistical_summaries(temp_parquet, dtypes, output_path)
+            if was_sampled:
+                logger.info("Using full dataset for statistical summary export...")
+                temp_full_parquet = None
+                try:
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".parq", delete=False
+                    ) as tmp:
+                        temp_full_parquet = tmp.name
+                    original_data.to_parquet(temp_full_parquet)
+                    export_statistical_summaries(temp_full_parquet, dtypes, output_path)
+                finally:
+                    if temp_full_parquet and os.path.exists(temp_full_parquet):
+                        os.remove(temp_full_parquet)
+            else:
+                export_statistical_summaries(temp_parquet, dtypes, output_path)
     finally:
         # Clean up temporary parquet file
         if temp_parquet and os.path.exists(temp_parquet):
             os.remove(temp_parquet)
 
     return output_path
+
+
+def check_and_sample_large_dataset(
+    data, max_rows=DEFAULT_MAX_ROWS, sample_size=DEFAULT_SAMPLE_SIZE, no_sample=False
+):
+    """
+    Check if dataset is large and sample if necessary.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        The input data
+    max_rows : int
+        Maximum number of rows before sampling is applied
+    sample_size : int
+        Number of rows to sample for large datasets
+    no_sample : bool
+        If True, disable sampling even for large datasets
+
+    Returns
+    -------
+    pandas.DataFrame
+        Original or sampled DataFrame
+    bool
+        True if data was sampled, False otherwise
+    """
+    n_rows = len(data)
+
+    # Check if sampling is needed
+    if no_sample or n_rows <= max_rows:
+        return data, False
+
+    # Log warning about large dataset
+    logger.warning(
+        f"Dataset has {n_rows:,} rows, which exceeds the threshold of {max_rows:,} rows. "
+        f"Sampling {sample_size:,} rows for visualization to improve performance."
+    )
+    logger.info(
+        "To disable sampling, use --no-sample flag (may cause memory issues). "
+        "To adjust sample size, use --sample-size parameter."
+    )
+
+    # Calculate memory usage estimate
+    memory_mb = data.memory_usage(deep=True).sum() / 1024 / 1024
+    logger.info(f"Original dataset memory usage: {memory_mb:.2f} MB")
+
+    # Perform stratified sampling if possible, otherwise random sampling
+    sampled_data = data.sample(n=min(sample_size, n_rows), random_state=42)
+
+    # Log result
+    sampled_memory_mb = sampled_data.memory_usage(deep=True).sum() / 1024 / 1024
+    logger.info(
+        f"Sampled dataset: {len(sampled_data):,} rows, {sampled_memory_mb:.2f} MB"
+    )
+
+    return sampled_data, True
 
 
 def ignore_if_exist_or_save(func):
