@@ -19,7 +19,9 @@ import click
 import dask
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+from scipy.interpolate import griddata
 import seaborn as sns
 
 logger = logging.getLogger(__name__)
@@ -859,9 +861,6 @@ def scatter_plot_3d(data, col1, col2, col3, file_name=None):
 @ignore_if_exist_or_save
 def contour_plot(data, col1, col2, col3, file_name=None):
     """Create contour plot showing relationship between 3 numeric variables"""
-    import numpy as np
-    from scipy.interpolate import griddata
-
     # Remove NaN values
     clean_data = data[[col1, col2, col3]].dropna()
 

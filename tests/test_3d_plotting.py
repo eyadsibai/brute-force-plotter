@@ -333,8 +333,8 @@ class TestNumericCategoryCategory:
         df = pd.DataFrame(
             {
                 "value": list(range(n)),
-                "cat1": (["A", "B", "C"] * 40)[:n],
-                "cat2": ([f"Cat{i}" for i in range(20)] * 6)[:n],  # 20 categories
+                "cat1": ["A", "B", "C"] * (n // 3),
+                "cat2": [f"Cat{i}" for i in range(20)] * (n // 20),  # 20 categories
             }
         )
         file_path = os.path.join(temp_dir, "many_cat2.parquet")
