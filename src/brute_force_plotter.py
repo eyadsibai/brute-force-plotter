@@ -435,7 +435,7 @@ def plot_category_numeric_minimal(input_file, category_col, numeric_col, path):
 def plot_category_numeric_minimal_sync(input_file, category_col, numeric_col, path):
     """Non-delayed minimal version for synchronous execution"""
     df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
-    f, axes = plt.subplots(1, 2, figsize=(8, 4))
+    _, axes = plt.subplots(1, 2, figsize=(8, 4))
     file_name = os.path.join(path, f"{category_col}-{numeric_col}-minimal-plot.png")
     box_violin_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
