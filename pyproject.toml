@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "brute-force-plotter"
+version = "0.1.0"
+description = "Tool to visualize data quickly with no brain usage for plot creation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Eyad Sibai", email = "eyad.alsibai@gmail.com"}
+]
+maintainers = [
+    {name = "Eyad Sibai", email = "eyad.alsibai@gmail.com"}
+]
+keywords = ["visualization", "plotting", "data-analysis", "matplotlib", "seaborn"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+dependencies = [
+    "matplotlib>=3.10.7",
+    "click>=8.3.0",
+    "pandas>=2.3.3",
+    "seaborn>=0.13.2",
+    "pyarrow>=22.0.0",
+    "dask[distributed]>=2024.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+brute-force-plotter = "src.brute_force_plotter:main"
+
+[project.urls]
+Homepage = "https://github.com/eyadsibai/brute-force-plotter"
+Repository = "https://github.com/eyadsibai/brute-force-plotter"
+Issues = "https://github.com/eyadsibai/brute-force-plotter/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[dependency-groups]
+dev = []

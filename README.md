@@ -5,9 +5,35 @@ Tool to visualize data quickly with no brain usage for plot creation
 
 ## Installation
 
-will be packaged soon
+**Using UV (Recommended)**
 
-For now, you can use it by cloning the repository:
+UV is a fast Python package installer and resolver. First, install UV:
+
+```bash
+$ pip install uv
+```
+
+Then install the project using:
+
+```bash
+$ git clone https://github.com/eyadsibai/brute_force_plotter.git
+$ cd brute_force_plotter
+$ uv sync
+```
+
+This will create a virtual environment (.venv) and install all dependencies with locked versions for reproducibility.
+
+**Useful UV Commands:**
+
+- `uv sync` - Install dependencies and sync the environment
+- `uv add <package>` - Add a new dependency
+- `uv remove <package>` - Remove a dependency
+- `uv lock` - Update the lockfile
+- `uv run <command>` - Run a command in the virtual environment
+
+**Using pip (Traditional)**
+
+You can also use pip to install dependencies:
 
 ```bash
 $ git clone https://github.com/eyadsibai/brute_force_plotter.git
@@ -48,7 +74,21 @@ See [example/library_usage_example.py](https://github.com/eyadsibai/brute_force_
 
 ## Example
 
-It was tested on python3 only (Python 3.12+ recommended)
+It was tested on python3 only (Python 3.10+ required)
+
+**Using UV:**
+
+```bash
+$ git clone https://github.com/eyadsibai/brute_force_plotter.git
+$ cd brute_force_plotter
+$ uv sync
+$ uv run python -m src example/titanic.csv example/titanic_dtypes.json example/output
+
+# Or use the brute-force-plotter command:
+$ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output
+```
+
+**Using pip:**
 
 ```bash
 $ git clone https://github.com/eyadsibai/brute_force_plotter.git
@@ -63,6 +103,14 @@ $ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
 - `--theme`: Choose plot style theme (darkgrid, whitegrid, dark, white, ticks) (default: darkgrid)
 - `--n-workers`: Number of parallel workers for plot generation (default: 4)
 - `--export-stats`: Export statistical summary to CSV files
+
+**Using UV:**
+
+```bash
+$ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
+```
+
+**Using pip:**
 
 ```bash
 $ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
@@ -120,25 +168,15 @@ The tool automatically generates:
 
 ## Example Plots
 
-<p align="center">
-<img src="https://raw.githubusercontent.com/eyadsibai/brute_force_plotter/master/example/output/distributions/Age-dist-plot.png" alt="Age Distribution (Histogram with Kernel Density Estimation, Violin Plot)" width="260" height="300">
-</p>
+![Age Distribution (Histogram with Kernel Density Estimation, Violin Plot)](https://raw.githubusercontent.com/eyadsibai/brute_force_plotter/master/example/output/distributions/Age-dist-plot.png)
 
-<p align="center">
-<img src="https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Pclass-Sex-heatmap.png" alt="Heatmap for Sex and Pclass" width="260" height="300">
-</p>
+![Heatmap for Sex and Pclass](https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Pclass-Sex-heatmap.png)
 
-<p align="center">
-<img src="https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Pclass-Survived-bar-plot.png" alt="Pclass vs Survived" width="260" height="300">
-</p>
+![Pclass vs Survived](https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Pclass-Survived-bar-plot.png)
 
-<p align="center">
-<img src="https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Survived-Age-plot.png" alt="Survived vs Age" width="260" height="300">
-</p>
+![Survived vs Age](https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Survived-Age-plot.png)
 
-<p align="center">
-<img src="https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Age-Fare-scatter-plot.png" alt="Age vs Fare" width="260" height="300">
-</p>
+![Age vs Fare](https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Age-Fare-scatter-plot.png)
 
 ## TODO
 
