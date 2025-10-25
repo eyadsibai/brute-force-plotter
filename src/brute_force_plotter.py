@@ -826,6 +826,8 @@ def scatter_plot_with_hue(data, col1, col2, hue_col, file_name=None):
 @ignore_if_exist_or_save
 def scatter_plot_3d(data, col1, col2, col3, file_name=None):
     """Create 3D scatter plot for three numeric variables"""
+    # Import Axes3D for its side effect: registers the '3d' projection for matplotlib.
+    # This is required for 'projection="3d"' to work below.
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
     fig = plt.figure(figsize=(10, 8))
