@@ -3,7 +3,6 @@ Tests for large dataset fallback functionality.
 """
 
 import os
-import tempfile
 
 import pandas as pd
 import pytest
