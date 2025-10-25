@@ -86,6 +86,9 @@ It was tested on python3 only (Python 3.10+ required)
 	$ cd brute_force_plotter
 	$ uv sync
 	$ uv run python -m src example/titanic.csv example/titanic_dtypes.json example/output
+	
+	# Or use the brute-force-plotter command:
+	$ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output
 
 **Using pip:**
 
@@ -107,7 +110,7 @@ Command Line Options
 
 .. code:: bash
 
-	$ uv run python -m src example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
+	$ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
 
 **Using pip:**
 
