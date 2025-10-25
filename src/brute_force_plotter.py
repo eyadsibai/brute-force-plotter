@@ -85,9 +85,13 @@ def main(input_file, dtypes, output_path, skip_existing, theme, n_workers, expor
 
     plots = create_plots(new_file_name, data_types, output_path)
     dask.compute(*plots)
+    
+    # Export statistical summaries if requested
+    if export_stats:
+        export_statistical_summaries(new_file_name, data_types, output_path)
 
 
-def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4):
+def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4, export_stats=False):
     """
     Create plots from a pandas DataFrame.
     
@@ -110,6 +114,8 @@ def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4
         If True, use Dask for parallel processing. Defaults to False.
     n_workers : int, optional
         Number of workers for Dask (only used if use_dask=True). Defaults to 4.
+    export_stats : bool, optional
+        If True, export statistical summaries to CSV files. Defaults to False.
     
     Returns
     -------
@@ -129,6 +135,9 @@ def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4
     >>> 
     >>> # Show plots interactively
     >>> bfp.plot(data, dtypes, show=True)
+    >>> 
+    >>> # Export statistical summaries
+    >>> bfp.plot(data, dtypes, output_path='./plots', export_stats=True)
     """
     global _show_plots, _save_plots
     
@@ -177,6 +186,10 @@ def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4
             if plots:
                 for plot_task in plots:
                     plot_task.compute()
+        
+        # Export statistical summaries if requested
+        if export_stats:
+            export_statistical_summaries(temp_parquet, dtypes, output_path)
     finally:
         # Clean up temporary parquet file
         if temp_parquet and os.path.exists(temp_parquet):
@@ -545,6 +558,155 @@ def missing_plot(data, file_name=None):
     plt.xlabel("Columns")
     plt.ylabel("Rows")
     sns.despine(left=True)
+
+
+@dask.delayed
+def plot_correlation_matrix(input_file, dtypes, path):
+    """
+    Generate correlation matrix plots (Pearson and Spearman) for numeric columns
+    """
+    # Get only numeric columns
+    numeric_cols = [col for col, dtype in dtypes.items() if dtype == "n"]
+    
+    if len(numeric_cols) < 2:
+        logger.info("Not enough numeric columns for correlation matrix (need at least 2)")
+        return
+    
+    # Read only numeric columns
+    df = pd.read_parquet(input_file, columns=numeric_cols)
+    
+    # Pearson correlation
+    pearson_corr = df.corr(method='pearson')
+    file_name = os.path.join(path, "correlation-pearson.png")
+    correlation_heatmap(pearson_corr, file_name=file_name, title="Pearson Correlation Matrix")
+    
+    # Spearman correlation
+    spearman_corr = df.corr(method='spearman')
+    file_name = os.path.join(path, "correlation-spearman.png")
+    correlation_heatmap(spearman_corr, file_name=file_name, title="Spearman Correlation Matrix")
+
+
+@dask.delayed
+def plot_missing_values(input_file, dtypes, path):
+    """
+    Generate missing values heatmap and analysis
+    """
+    # Get all non-ignored columns
+    cols = [col for col, dtype in dtypes.items() if dtype != "i"]
+    
+    if not cols:
+        logger.info("No columns to analyze for missing values")
+        return
+    
+    # Read data
+    df = pd.read_parquet(input_file, columns=cols)
+    
+    # Create missing values pattern (True where value is missing)
+    missing_data = df.isnull()
+    
+    # Only create plot if there are any missing values
+    if missing_data.any().any():
+        file_name = os.path.join(path, "missing-values-heatmap.png")
+        missing_plot(missing_data, file_name=file_name)
+    else:
+        logger.info("No missing values found in the dataset")
+
+
+def export_statistical_summaries(input_file, dtypes, output_path):
+    """
+    Export statistical summaries to CSV files
+    
+    Parameters
+    ----------
+    input_file : str
+        Path to the parquet file
+    dtypes : dict
+        Dictionary mapping column names to data types
+    output_path : str
+        Directory where CSV files will be saved
+    """
+    logger.info("Exporting statistical summaries...")
+    
+    # Get non-ignored columns
+    cols = [col for col, dtype in dtypes.items() if dtype != "i"]
+    
+    if not cols:
+        logger.info("No columns to export statistics for")
+        return
+    
+    # Read data
+    df = pd.read_parquet(input_file, columns=cols)
+    
+    # Create stats directory
+    stats_path = os.path.join(output_path, "statistics")
+    make_sure_path_exists(stats_path)
+    
+    # 1. Numeric statistics
+    numeric_cols = [col for col, dtype in dtypes.items() if dtype == "n"]
+    if numeric_cols:
+        numeric_stats = df[numeric_cols].describe()
+        # Add missing count
+        numeric_stats.loc['missing'] = df[numeric_cols].isnull().sum()
+        numeric_stats.loc['missing_pct'] = (df[numeric_cols].isnull().sum() / len(df)) * 100
+        
+        stats_file = os.path.join(stats_path, "numeric_statistics.csv")
+        numeric_stats.to_csv(stats_file)
+        logger.info(f"Numeric statistics saved to: {stats_file}")
+    
+    # 2. Categorical statistics (value counts for each categorical column)
+    category_cols = [col for col, dtype in dtypes.items() if dtype == "c"]
+    if category_cols:
+        for col in category_cols:
+            value_counts = df[col].value_counts(dropna=False)
+            value_counts_df = pd.DataFrame({
+                'value': value_counts.index,
+                'count': value_counts.values,
+                'percentage': (value_counts.values / len(df)) * 100
+            })
+            
+            stats_file = os.path.join(stats_path, f"category_{col}_counts.csv")
+            value_counts_df.to_csv(stats_file, index=False)
+        
+        logger.info(f"Categorical statistics saved for {len(category_cols)} columns")
+    
+    # 3. Missing values analysis
+    missing_summary = pd.DataFrame({
+        'column': cols,
+        'missing_count': [df[col].isnull().sum() for col in cols],
+        'missing_percentage': [(df[col].isnull().sum() / len(df)) * 100 for col in cols],
+        'total_count': len(df),
+        'non_missing_count': [df[col].notnull().sum() for col in cols]
+    })
+    
+    missing_file = os.path.join(stats_path, "missing_values_summary.csv")
+    missing_summary.to_csv(missing_file, index=False)
+    logger.info(f"Missing values summary saved to: {missing_file}")
+    
+    # 4. Overall dataset summary
+    overall_summary = pd.DataFrame({
+        'metric': [
+            'total_rows',
+            'total_columns',
+            'numeric_columns',
+            'categorical_columns',
+            'columns_with_missing',
+            'total_missing_cells',
+            'missing_percentage'
+        ],
+        'value': [
+            len(df),
+            len(cols),
+            len(numeric_cols),
+            len(category_cols),
+            missing_summary[missing_summary['missing_count'] > 0].shape[0],
+            missing_summary['missing_count'].sum(),
+            (missing_summary['missing_count'].sum() / (len(df) * len(cols))) * 100
+        ]
+    })
+    
+    overall_file = os.path.join(stats_path, "overall_summary.csv")
+    overall_summary.to_csv(overall_file, index=False)
+    logger.info(f"Overall summary saved to: {overall_file}")
 
 
 if __name__ == "__main__":
