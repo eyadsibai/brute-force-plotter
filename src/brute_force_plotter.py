@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Brute Force Plotter
@@ -9,16 +8,15 @@ Library and Command Line Interface
 """
 
 import errno
+from itertools import chain, combinations
 import json
 import logging
 import math
 import os
 import tempfile
-from itertools import chain, combinations
 
 import click
 import dask
-from dask.diagnostics import ProgressBar
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -44,35 +42,57 @@ sns.set(rc={"figure.figsize": (8, 6)})
 @click.argument("input_file")
 @click.argument("dtypes")
 @click.argument("output_path")
-@click.option("--skip-existing", is_flag=True, default=True, help="Skip generating plots that already exist")
-@click.option("--theme", type=click.Choice(["darkgrid", "whitegrid", "dark", "white", "ticks"]), default="darkgrid", help="Seaborn plot style theme")
-@click.option("--n-workers", type=int, default=4, help="Number of parallel workers for plot generation")
-@click.option("--export-stats", is_flag=True, default=False, help="Export statistical summary to CSV")
-def main(input_file, dtypes, output_path, skip_existing, theme, n_workers, export_stats):
+@click.option(
+    "--skip-existing",
+    is_flag=True,
+    default=True,
+    help="Skip generating plots that already exist",
+)
+@click.option(
+    "--theme",
+    type=click.Choice(["darkgrid", "whitegrid", "dark", "white", "ticks"]),
+    default="darkgrid",
+    help="Seaborn plot style theme",
+)
+@click.option(
+    "--n-workers",
+    type=int,
+    default=4,
+    help="Number of parallel workers for plot generation",
+)
+@click.option(
+    "--export-stats",
+    is_flag=True,
+    default=False,
+    help="Export statistical summary to CSV",
+)
+def main(
+    input_file, dtypes, output_path, skip_existing, theme, n_workers, export_stats
+):
     """Create Plots From data in input"""
     # Set matplotlib backend for CLI (non-interactive)
     matplotlib.use("agg")
-    
+
     from dask.distributed import Client, LocalCluster
-    
+
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    
+
     # Set global skip_existing flag
     global skip_existing_plots
     skip_existing_plots = skip_existing
-    
+
     # Apply theme
     sns.set_style(theme)
-    
+
     cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
-    client = Client(cluster)
+    _client = Client(cluster)  # noqa: F841 - Client instance needed to enable dask cluster
 
     # Load dtypes JSON first to know which columns to ignore
-    with open(dtypes, "r") as f:
+    with open(dtypes) as f:
         data_types = json.load(f)
 
     # Filter out columns with dtype "i" (ignore)
@@ -85,16 +105,24 @@ def main(input_file, dtypes, output_path, skip_existing, theme, n_workers, expor
 
     plots = create_plots(new_file_name, data_types, output_path)
     dask.compute(*plots)
-    
+
     # Export statistical summaries if requested
     if export_stats:
         export_statistical_summaries(new_file_name, data_types, output_path)
 
 
-def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4, export_stats=False):
+def plot(
+    data,
+    dtypes,
+    output_path=None,
+    show=False,
+    use_dask=False,
+    n_workers=4,
+    export_stats=False,
+):
     """
     Create plots from a pandas DataFrame.
-    
+
     Parameters
     ----------
     data : pandas.DataFrame
@@ -116,63 +144,66 @@ def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4
         Number of workers for Dask (only used if use_dask=True). Defaults to 4.
     export_stats : bool, optional
         If True, export statistical summaries to CSV files. Defaults to False.
-    
+
     Returns
     -------
     str
         Path where plots were saved (if saved)
-    
+
     Examples
     --------
     >>> import pandas as pd
     >>> import brute_force_plotter as bfp
-    >>> 
+    >>>
     >>> data = pd.read_csv('data.csv')
     >>> dtypes = {'age': 'n', 'gender': 'c', 'id': 'i'}
-    >>> 
+    >>>
     >>> # Save plots to directory
     >>> bfp.plot(data, dtypes, output_path='./plots')
-    >>> 
+    >>>
     >>> # Show plots interactively
     >>> bfp.plot(data, dtypes, show=True)
-    >>> 
+    >>>
     >>> # Export statistical summaries
     >>> bfp.plot(data, dtypes, output_path='./plots', export_stats=True)
     """
     global _show_plots, _save_plots
-    
+
     # Set matplotlib backend based on show parameter
     if show:
         try:
-            matplotlib.use('TkAgg')
-        except:
+            matplotlib.use("TkAgg")
+        except Exception:
             try:
-                matplotlib.use('Qt5Agg')
-            except:
+                matplotlib.use("Qt5Agg")
+            except Exception:
                 logger.warning("Could not set interactive backend, using default")
     else:
-        matplotlib.use('agg')
-    
+        matplotlib.use("agg")
+
     _show_plots = show
     _save_plots = not show or output_path is not None
-    
+
     # Determine output path
     if output_path is None and not show:
-        output_path = tempfile.mkdtemp(prefix='brute_force_plotter_')
-        logger.info(f"No output path specified, using temporary directory: {output_path}")
+        output_path = tempfile.mkdtemp(prefix="brute_force_plotter_")
+        logger.info(
+            f"No output path specified, using temporary directory: {output_path}"
+        )
     elif output_path is None and show:
         # Create a temp directory anyway for potential saving
-        output_path = tempfile.mkdtemp(prefix='brute_force_plotter_')
-    
+        output_path = tempfile.mkdtemp(prefix="brute_force_plotter_")
+
     # Create temporary parquet file for efficient processing
     temp_parquet = None
     try:
-        with tempfile.NamedTemporaryFile(suffix='.parq', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".parq", delete=False) as tmp:
             temp_parquet = tmp.name
         data.to_parquet(temp_parquet)
-        
+
         if use_dask:
             from dask.distributed import Client, LocalCluster
+
             cluster = LocalCluster(n_workers=n_workers)
             client = Client(cluster)
             try:
@@ -186,7 +217,7 @@ def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4
             if plots:
                 for plot_task in plots:
                     plot_task.compute()
-        
+
         # Export statistical summaries if requested
         if export_stats:
             export_statistical_summaries(temp_parquet, dtypes, output_path)
@@ -194,15 +225,16 @@ def plot(data, dtypes, output_path=None, show=False, use_dask=False, n_workers=4
         # Clean up temporary parquet file
         if temp_parquet and os.path.exists(temp_parquet):
             os.remove(temp_parquet)
-    
+
     return output_path
 
 
 def ignore_if_exist_or_save(func):
     """Decorator to handle plot saving/showing logic"""
+
     def wrapper(*args, **kwargs):
         file_name = kwargs.get("file_name")
-        
+
         # If saving is disabled and showing is enabled, just create and show
         if _show_plots and not _save_plots:
             func(*args, **kwargs)
@@ -216,15 +248,15 @@ def ignore_if_exist_or_save(func):
         else:
             func(*args, **kwargs)
             plt.gcf().set_tight_layout(True)
-            
+
             # Save if we should save
             if _save_plots and file_name:
                 plt.gcf().savefig(file_name, dpi=120)
-            
+
             # Show if we should show
             if _show_plots:
                 plt.show()
-            
+
             plt.close("all")
 
     return wrapper
@@ -360,16 +392,16 @@ def plot_category_numeric_sync(input_file, category_col, numeric_col, path):
 
 
 def create_plots(input_file, dtypes, output_path, use_dask=True):
-    distributions_path, two_d_interactions_path, three_d_interactions_path = _create_directories(
-        output_path
+    distributions_path, two_d_interactions_path, three_d_interactions_path = (
+        _create_directories(output_path)
     )
     plots = []
-    
+
     # Add summary plots
     logger.info("Adding correlation matrix and missing values plots...")
     plots.append(plot_correlation_matrix(input_file, dtypes, distributions_path))
     plots.append(plot_missing_values(input_file, dtypes, distributions_path))
-    
+
     for col, dtype in dtypes.items():
         print(col)
         if dtype == "i":
@@ -394,31 +426,47 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
         if dtype1 == dtype2 == "n":
             if use_dask:
                 plots.append(
-                    plot_numeric_numeric(input_file, col1, col2, two_d_interactions_path)
+                    plot_numeric_numeric(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
                 )
             else:
-                plot_numeric_numeric_sync(input_file, col1, col2, two_d_interactions_path)
+                plot_numeric_numeric_sync(
+                    input_file, col1, col2, two_d_interactions_path
+                )
         if dtype1 == dtype2 == "c":
             if use_dask:
                 plots.append(
-                    plot_category_category(input_file, col1, col2, two_d_interactions_path)
+                    plot_category_category(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
                 )
             else:
-                plot_category_category_sync(input_file, col1, col2, two_d_interactions_path)
+                plot_category_category_sync(
+                    input_file, col1, col2, two_d_interactions_path
+                )
         if dtype1 == "c" and dtype2 == "n":
             if use_dask:
                 plots.append(
-                    plot_category_numeric(input_file, col1, col2, two_d_interactions_path)
+                    plot_category_numeric(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
                 )
             else:
-                plot_category_numeric_sync(input_file, col1, col2, two_d_interactions_path)
+                plot_category_numeric_sync(
+                    input_file, col1, col2, two_d_interactions_path
+                )
         if dtype1 == "n" and dtype2 == "c":
             if use_dask:
                 plots.append(
-                    plot_category_numeric(input_file, col2, col1, two_d_interactions_path)
+                    plot_category_numeric(
+                        input_file, col2, col1, two_d_interactions_path
+                    )
                 )
             else:
-                plot_category_numeric_sync(input_file, col2, col1, two_d_interactions_path)
+                plot_category_numeric_sync(
+                    input_file, col2, col1, two_d_interactions_path
+                )
 
             # for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
             # dtypes.items(), 3):
@@ -485,11 +533,14 @@ def autolabel(rects):
     for rect in rects:
         height = rect.get_height()
         if not math.isnan(height) and height > 0:
-            plt.annotate(f'{int(height)}',
-                         xy=(rect.get_x() + rect.get_width() / 2, height),
-                         xytext=(0, 3),  # 3 points vertical offset
-                         textcoords="offset points",
-                         ha='center', va='bottom')
+            plt.annotate(
+                f"{int(height)}",
+                xy=(rect.get_x() + rect.get_width() / 2, height),
+                xytext=(0, 3),  # 3 points vertical offset
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+            )
 
 
 @ignore_if_exist_or_save
@@ -519,7 +570,10 @@ def bar_box_violin_dot_plots(data, category_col, numeric_col, axes, file_name=No
     sns.barplot(x=category_col, y=numeric_col, data=data, ax=axes[0])
     sns.stripplot(x=category_col, y=numeric_col, data=data, jitter=True, ax=axes[1])
     sns.boxplot(
-        x=category_col, y=numeric_col, data=data[data[numeric_col].notnull()], ax=axes[2]
+        x=category_col,
+        y=numeric_col,
+        data=data[data[numeric_col].notnull()],
+        ax=axes[2],
     )
     sns.violinplot(
         x=category_col,
@@ -543,8 +597,17 @@ def heatmap(data, file_name=None):
 def correlation_heatmap(data, file_name=None, title="Correlation Matrix"):
     """Create a correlation matrix heatmap"""
     plt.figure(figsize=(10, 8))
-    sns.heatmap(data=data, annot=True, fmt=".2f", cmap="coolwarm", center=0, 
-                vmin=-1, vmax=1, square=True, linewidths=0.5)
+    sns.heatmap(
+        data=data,
+        annot=True,
+        fmt=".2f",
+        cmap="coolwarm",
+        center=0,
+        vmin=-1,
+        vmax=1,
+        square=True,
+        linewidths=0.5,
+    )
     plt.title(title)
     sns.despine(left=True)
 
@@ -567,23 +630,29 @@ def plot_correlation_matrix(input_file, dtypes, path):
     """
     # Get only numeric columns
     numeric_cols = [col for col, dtype in dtypes.items() if dtype == "n"]
-    
+
     if len(numeric_cols) < 2:
-        logger.info("Not enough numeric columns for correlation matrix (need at least 2)")
+        logger.info(
+            "Not enough numeric columns for correlation matrix (need at least 2)"
+        )
         return
-    
+
     # Read only numeric columns
     df = pd.read_parquet(input_file, columns=numeric_cols)
-    
+
     # Pearson correlation
-    pearson_corr = df.corr(method='pearson')
+    pearson_corr = df.corr(method="pearson")
     file_name = os.path.join(path, "correlation-pearson.png")
-    correlation_heatmap(pearson_corr, file_name=file_name, title="Pearson Correlation Matrix")
-    
+    correlation_heatmap(
+        pearson_corr, file_name=file_name, title="Pearson Correlation Matrix"
+    )
+
     # Spearman correlation
-    spearman_corr = df.corr(method='spearman')
+    spearman_corr = df.corr(method="spearman")
     file_name = os.path.join(path, "correlation-spearman.png")
-    correlation_heatmap(spearman_corr, file_name=file_name, title="Spearman Correlation Matrix")
+    correlation_heatmap(
+        spearman_corr, file_name=file_name, title="Spearman Correlation Matrix"
+    )
 
 
 @dask.delayed
@@ -593,17 +662,17 @@ def plot_missing_values(input_file, dtypes, path):
     """
     # Get all non-ignored columns
     cols = [col for col, dtype in dtypes.items() if dtype != "i"]
-    
+
     if not cols:
         logger.info("No columns to analyze for missing values")
         return
-    
+
     # Read data
     df = pd.read_parquet(input_file, columns=cols)
-    
+
     # Create missing values pattern (True where value is missing)
     missing_data = df.isnull()
-    
+
     # Only create plot if there are any missing values
     if missing_data.any().any():
         file_name = os.path.join(path, "missing-values-heatmap.png")
@@ -615,7 +684,7 @@ def plot_missing_values(input_file, dtypes, path):
 def export_statistical_summaries(input_file, dtypes, output_path):
     """
     Export statistical summaries to CSV files
-    
+
     Parameters
     ----------
     input_file : str
@@ -626,84 +695,94 @@ def export_statistical_summaries(input_file, dtypes, output_path):
         Directory where CSV files will be saved
     """
     logger.info("Exporting statistical summaries...")
-    
+
     # Get non-ignored columns
     cols = [col for col, dtype in dtypes.items() if dtype != "i"]
-    
+
     if not cols:
         logger.info("No columns to export statistics for")
         return
-    
+
     # Read data
     df = pd.read_parquet(input_file, columns=cols)
-    
+
     # Create stats directory
     stats_path = os.path.join(output_path, "statistics")
     make_sure_path_exists(stats_path)
-    
+
     # 1. Numeric statistics
     numeric_cols = [col for col, dtype in dtypes.items() if dtype == "n"]
     if numeric_cols:
         numeric_stats = df[numeric_cols].describe()
         # Add missing count
-        numeric_stats.loc['missing'] = df[numeric_cols].isnull().sum()
-        numeric_stats.loc['missing_pct'] = (df[numeric_cols].isnull().sum() / len(df)) * 100
-        
+        numeric_stats.loc["missing"] = df[numeric_cols].isnull().sum()
+        numeric_stats.loc["missing_pct"] = (
+            df[numeric_cols].isnull().sum() / len(df)
+        ) * 100
+
         stats_file = os.path.join(stats_path, "numeric_statistics.csv")
         numeric_stats.to_csv(stats_file)
         logger.info(f"Numeric statistics saved to: {stats_file}")
-    
+
     # 2. Categorical statistics (value counts for each categorical column)
     category_cols = [col for col, dtype in dtypes.items() if dtype == "c"]
     if category_cols:
         for col in category_cols:
             value_counts = df[col].value_counts(dropna=False)
-            value_counts_df = pd.DataFrame({
-                'value': value_counts.index,
-                'count': value_counts.values,
-                'percentage': (value_counts.values / len(df)) * 100
-            })
-            
+            value_counts_df = pd.DataFrame(
+                {
+                    "value": value_counts.index,
+                    "count": value_counts.values,
+                    "percentage": (value_counts.values / len(df)) * 100,
+                }
+            )
+
             stats_file = os.path.join(stats_path, f"category_{col}_counts.csv")
             value_counts_df.to_csv(stats_file, index=False)
-        
+
         logger.info(f"Categorical statistics saved for {len(category_cols)} columns")
-    
+
     # 3. Missing values analysis
-    missing_summary = pd.DataFrame({
-        'column': cols,
-        'missing_count': [df[col].isnull().sum() for col in cols],
-        'missing_percentage': [(df[col].isnull().sum() / len(df)) * 100 for col in cols],
-        'total_count': len(df),
-        'non_missing_count': [df[col].notnull().sum() for col in cols]
-    })
-    
+    missing_summary = pd.DataFrame(
+        {
+            "column": cols,
+            "missing_count": [df[col].isnull().sum() for col in cols],
+            "missing_percentage": [
+                (df[col].isnull().sum() / len(df)) * 100 for col in cols
+            ],
+            "total_count": len(df),
+            "non_missing_count": [df[col].notnull().sum() for col in cols],
+        }
+    )
+
     missing_file = os.path.join(stats_path, "missing_values_summary.csv")
     missing_summary.to_csv(missing_file, index=False)
     logger.info(f"Missing values summary saved to: {missing_file}")
-    
+
     # 4. Overall dataset summary
-    overall_summary = pd.DataFrame({
-        'metric': [
-            'total_rows',
-            'total_columns',
-            'numeric_columns',
-            'categorical_columns',
-            'columns_with_missing',
-            'total_missing_cells',
-            'missing_percentage'
-        ],
-        'value': [
-            len(df),
-            len(cols),
-            len(numeric_cols),
-            len(category_cols),
-            missing_summary[missing_summary['missing_count'] > 0].shape[0],
-            missing_summary['missing_count'].sum(),
-            (missing_summary['missing_count'].sum() / (len(df) * len(cols))) * 100
-        ]
-    })
-    
+    overall_summary = pd.DataFrame(
+        {
+            "metric": [
+                "total_rows",
+                "total_columns",
+                "numeric_columns",
+                "categorical_columns",
+                "columns_with_missing",
+                "total_missing_cells",
+                "missing_percentage",
+            ],
+            "value": [
+                len(df),
+                len(cols),
+                len(numeric_cols),
+                len(category_cols),
+                missing_summary[missing_summary["missing_count"] > 0].shape[0],
+                missing_summary["missing_count"].sum(),
+                (missing_summary["missing_count"].sum() / (len(df) * len(cols))) * 100,
+            ],
+        }
+    )
+
     overall_file = os.path.join(stats_path, "overall_summary.csv")
     overall_summary.to_csv(overall_file, index=False)
     logger.info(f"Overall summary saved to: {overall_file}")
