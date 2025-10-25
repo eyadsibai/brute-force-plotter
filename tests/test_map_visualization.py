@@ -114,7 +114,7 @@ class TestMapVisualization:
         assert os.path.exists(expected_file)
 
         # Check that file has content
-        with open(expected_file) as f:
+        with open(expected_file, encoding="utf-8") as f:
             content = f.read()
             assert len(content) > 0
             assert "OpenStreetMap" in content
@@ -130,7 +130,7 @@ class TestMapVisualization:
         assert os.path.exists(expected_file)
 
         # Check that file has content
-        with open(expected_file) as f:
+        with open(expected_file, encoding="utf-8") as f:
             content = f.read()
             assert len(content) > 0
             # Should contain city names in the legend
