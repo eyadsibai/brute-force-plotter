@@ -451,7 +451,6 @@ def plot_timeseries_timeseries(input_file, time_col1, time_col2, path):
     file_name = os.path.join(path, f"{time_col1}-{time_col2}-timeseries-comparison.png")
 
     # Create figure with two subplots showing both timelines
-    import matplotlib.pyplot as plt
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
 
