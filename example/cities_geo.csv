@@ -1,0 +1,21 @@
+city,latitude,longitude,population,category
+New York,40.7128,-74.0060,8804190,Large
+Los Angeles,34.0522,-118.2437,3979576,Large
+Chicago,41.8781,-87.6298,2695598,Large
+Houston,29.7604,-95.3698,2325502,Large
+Phoenix,33.4484,-112.0740,1660272,Large
+Philadelphia,39.9526,-75.1652,1584138,Large
+San Antonio,29.4241,-98.4936,1547253,Medium
+San Diego,32.7157,-117.1611,1423851,Medium
+Dallas,32.7767,-96.7970,1343573,Medium
+San Jose,37.3382,-121.8863,1021795,Medium
+Austin,30.2672,-97.7431,978908,Medium
+Jacksonville,30.3322,-81.6557,911507,Medium
+Fort Worth,32.7555,-97.3308,909585,Medium
+Columbus,39.9612,-82.9988,898553,Medium
+Charlotte,35.2271,-80.8431,885708,Medium
+San Francisco,37.7749,-122.4194,881549,Medium
+Indianapolis,39.7684,-86.1581,876384,Medium
+Seattle,47.6062,-122.3321,753675,Medium
+Denver,39.7392,-104.9903,727211,Medium
+Boston,42.3601,-71.0589,692600,Medium

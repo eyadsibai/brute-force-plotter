@@ -54,7 +54,7 @@ import brute_force_plotter as bfp
 # Load your data
 data = pd.read_csv('data.csv')
 
-# Define data types (c=category, n=numeric, i=ignore)
+# Define data types (c=category, n=numeric, g=geocoordinate, i=ignore)
 dtypes = {
     'column1': 'n',  # numeric
     'column2': 'c',  # category
@@ -66,6 +66,16 @@ bfp.plot(data, dtypes, output_path='./plots')
 
 # Or show plots interactively
 bfp.plot(data, dtypes, show=True)
+
+# Example with geocoordinates
+geo_data = pd.read_csv('cities.csv')
+geo_dtypes = {
+    'latitude': 'g',   # geocoordinate
+    'longitude': 'g',  # geocoordinate
+    'city_type': 'c',  # category
+    'population': 'n'  # numeric
+}
+bfp.plot(geo_data, geo_dtypes, output_path='./maps')
 ```
 
 See [example/library_usage_example.py](https://github.com/eyadsibai/brute_force_plotter/example/library_usage_example.py) for more examples.
@@ -120,7 +130,13 @@ $ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output 
 
 - json.dump({k:v.name for k,v in df.dtypes.to_dict().items()},open('dtypes.json','w'))  
 - the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute_force_plotter/example/titanic.csv)
-- second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json)
+- second argument is a json file with the data types of each columns:
+  - `c` for category
+  - `n` for numeric
+  - `g` for geocoordinate (latitude/longitude) - **NEW!**
+  - `i` for ignore
+  
+  Example: [example/titanic_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json)
 
 ```json
 {
@@ -140,7 +156,22 @@ $ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output 
 ```
 
 - third argument is the output directory
-- c stands for category, i stands for ignore, n for numeric
+
+### Geocoordinate Example
+
+For data with latitude and longitude columns:
+
+```json
+{
+  "city": "i",
+  "latitude": "g",
+  "longitude": "g",
+  "population": "n",
+  "category": "c"
+}
+```
+
+See [example/cities_geo.csv](https://github.com/eyadsibai/brute_force_plotter/example/cities_geo.csv) and [example/cities_geo_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/cities_geo_dtypes.json) for a complete example.
 
 ## Features
 
@@ -159,6 +190,13 @@ The tool automatically generates:
 - Scatter plots for numeric vs numeric
 - Heatmaps for categorical vs categorical
 - Bar/Box/Violin/Strip plots for categorical vs numeric
+
+**Map Visualizations (NEW!):**
+
+- Interactive maps for geocoordinate data (latitude/longitude)
+- Color-coded markers based on categorical variables
+- Automatic detection of lat/lon column pairs
+- Support for common naming patterns (lat, lon, latitude, longitude, x_coord, y_coord)
 
 **Statistical Summaries (with --export-stats):**
 
@@ -185,7 +223,7 @@ The tool automatically generates:
 - Support 3 variables (contour plots/ etc)
 - Fallback for large datasets
 - Figure out the data type or suggest some
-- Map visualization (if geocoordinates)
+- ~~Map visualization (if geocoordinates)~~ ✅ Interactive map visualization added!
 - Minimize the number of plots
 - Support for Time Series
 
@@ -313,6 +351,7 @@ Pre-commit hooks ensure that:
 ✅ Improved logging and progress indicators
 ✅ Code cleanup and better error handling
 ✅ **Comprehensive test suite with 96% coverage**
+✅ **Interactive map visualization for geocoordinate data** (NEW!)
 
 ## Contributing
 
