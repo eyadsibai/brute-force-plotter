@@ -39,10 +39,12 @@ output_dir = bfp.plot(
     dtypes, 
     output_path='./output_from_library',
     show=False,  # Set to True to display plots interactively
-    use_dask=False  # Set to True to use parallel processing with Dask
+    use_dask=False,  # Set to True to use parallel processing with Dask
+    export_stats=True  # Export statistical summaries to CSV files
 )
 
 print(f"✓ Plots saved to: {output_dir}")
+print(f"✓ Statistical summaries exported to: {output_dir}/statistics/")
 
 # Example 2: Creating plots from a DataFrame and showing them interactively
 # (Uncomment to test interactive display)
