@@ -31,16 +31,6 @@ This will create a virtual environment (.venv) and install all dependencies with
 - `uv lock` - Update the lockfile
 - `uv run <command>` - Run a command in the virtual environment
 
-**Using pip (Traditional)**
-
-You can also use pip to install dependencies:
-
-```bash
-$ git clone https://github.com/eyadsibai/brute_force_plotter.git
-$ cd brute_force_plotter
-$ pip3 install -r requirements.txt
-```
-
 ## Usage
 
 **As a Python Library (NEW!)**
@@ -89,21 +79,15 @@ $ uv run python -m src example/titanic.csv example/titanic_dtypes.json example/o
 $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output
 ```
 
-**Using pip:**
-
-```bash
-$ git clone https://github.com/eyadsibai/brute_force_plotter.git
-$ cd brute_force_plotter
-$ pip3 install -r requirements.txt
-$ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
-```
-
 ## Command Line Options
 
 - `--skip-existing`: Skip generating plots that already exist (default: True)
 - `--theme`: Choose plot style theme (darkgrid, whitegrid, dark, white, ticks) (default: darkgrid)
 - `--n-workers`: Number of parallel workers for plot generation (default: 4)
 - `--export-stats`: Export statistical summary to CSV files
+- `--max-rows`: Maximum number of rows before sampling is applied (default: 100,000)
+- `--sample-size`: Number of rows to sample for large datasets (default: 50,000)
+- `--no-sample`: Disable sampling for large datasets (may cause memory issues)
 
 **Using UV:**
 
@@ -111,10 +95,27 @@ $ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
 $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
 ```
 
-**Using pip:**
+
+## Large Dataset Handling
+
+For datasets exceeding 100,000 rows, brute-force-plotter automatically samples the data to improve performance and reduce memory usage. This ensures plots are generated quickly even with millions of rows.
+
+**Default Behavior:**
+- Datasets with ≤ 100,000 rows: No sampling, all data is used
+- Datasets with > 100,000 rows: Automatically samples 50,000 rows for visualization
+- Statistical exports (`--export-stats`) always use the full dataset for accuracy
+
+**Customization:**
 
 ```bash
-$ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
+# Increase sampling threshold to 200,000 rows
+$ python3 -m src data.csv dtypes.json output --max-rows 200000
+
+# Use a larger sample size (75,000 rows)
+$ python3 -m src data.csv dtypes.json output --sample-size 75000
+
+# Disable sampling entirely (use with caution for very large datasets)
+$ python3 -m src data.csv dtypes.json output --no-sample
 ```
 
 ## Time Series Example
@@ -145,6 +146,29 @@ The time series example generates plots for:
   "id": "i"              # ignore
 }
 ```
+
+**Library Usage:**
+
+```python
+import pandas as pd
+import brute_force_plotter as bfp
+
+# Load a large dataset
+data = pd.read_csv('large_data.csv')  # e.g., 500,000 rows
+
+dtypes = {'col1': 'n', 'col2': 'c'}
+
+# Automatic sampling (default: max_rows=100000, sample_size=50000)
+bfp.plot(data, dtypes, output_path='./plots')
+
+# Custom sampling parameters
+bfp.plot(data, dtypes, output_path='./plots', max_rows=200000, sample_size=75000)
+
+# Disable sampling
+bfp.plot(data, dtypes, output_path='./plots', no_sample=True)
+```
+
+**Note:** Sampling uses a fixed random seed (42) for reproducibility, ensuring consistent results across multiple runs.
 
 ## Arguments
 
@@ -221,7 +245,7 @@ The tool automatically generates:
 - target variable support
 - ~~Tests?~~ ✅ Comprehensive test suite added!
 - Support 3 variables (contour plots/ etc)
-- Fallback for large datasets
+- ~~Fallback for large datasets~~ ✅ Automatic sampling for datasets >100k rows!
 - Figure out the data type or suggest some
 - Map visualization (if geocoordinates)
 - Minimize the number of plots
@@ -229,7 +253,7 @@ The tool automatically generates:
 
 ## Testing
 
-The project includes a comprehensive test suite with 79+ tests covering unit tests, integration tests, and edge cases.
+The project includes a comprehensive test suite with 81+ tests covering unit tests, integration tests, and edge cases.
 
 **Running Tests**
 
@@ -256,7 +280,7 @@ $ pytest -v
 
 The test suite achieves ~96% code coverage and includes:
 
-- **Unit tests**: Core plotting functions, utilities, statistical exports
+- **Unit tests**: Core plotting functions, utilities, statistical exports, large dataset handling
 - **Integration tests**: CLI interface, library interface, end-to-end workflows
 - **Edge case tests**: Empty data, missing values, many categories, Unicode support
 
@@ -279,12 +303,6 @@ When developing for this project, it's important to set up code quality tools to
 Using UV:
 ```bash
 $ uv sync  # Installs all dependencies including dev tools
-```
-
-Using pip:
-```bash
-$ pip install -r requirements.txt
-$ pip install pytest pytest-cov ruff pre-commit
 ```
 
 **2. Install Pre-commit Hooks (REQUIRED)**
@@ -352,6 +370,8 @@ Pre-commit hooks ensure that:
 ✅ Code cleanup and better error handling
 ✅ **Comprehensive test suite with 96% coverage**
 ✅ **Time series support with line plots, grouped plots, and multi-series overlays**
+✅ **Comprehensive test suite with 96% coverage (81+ tests)**
+✅ **Large dataset fallback with automatic sampling**
 
 ## Contributing
 
@@ -361,6 +381,19 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 - Using code quality tools (Ruff, pre-commit)
 - Submitting pull requests
 - Coding standards and best practices
+
+## Contributors
+
+### Code Contributors
+
+- Eyad Sibai / [@eyadsibai](https://github.com/eyadsibai)
+
+### Special Thanks
+
+The following haven't provided code directly, but have provided guidance and advice:
+
+- Andreas Meisingseth / [@AndreasMeisingseth](https://github.com/AndreasMeisingseth)
+- Tom Baylis / [@tbaylis](https://github.com/tbaylis)
 
 ## License
 
