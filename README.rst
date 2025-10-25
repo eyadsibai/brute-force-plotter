@@ -5,9 +5,21 @@ Tool to visualize data quickly with no brain usage for plot creation
 
 Installation
 ------------
-will be packaged soon
+**Using UV (Recommended)**
 
-For now, you can use it by cloning the repository:
+UV is a fast Python package installer and resolver. Install the project using:
+
+.. code:: bash
+
+	$ git clone https://github.com/eyadsibai/brute_force_plotter.git
+	$ cd brute_force_plotter
+	$ uv sync
+
+This will create a virtual environment and install all dependencies.
+
+**Using pip (Traditional)**
+
+You can also use pip to install dependencies:
 
 .. code:: bash
 
@@ -50,7 +62,18 @@ See `example/library_usage_example.py <https://github.com/eyadsibai/brute_force_
 
 Example
 -------
-It was tested on python3 only (Python 3.12+ recommended)
+It was tested on python3 only (Python 3.10+ required)
+
+**Using UV:**
+
+.. code:: bash
+
+	$ git clone https://github.com/eyadsibai/brute_force_plotter.git
+	$ cd brute_force_plotter
+	$ uv sync
+	$ uv run python -m src example/titanic.csv example/titanic_dtypes.json example/output
+
+**Using pip:**
 
 .. code:: bash
 
@@ -65,6 +88,14 @@ Command Line Options
 - ``--theme``: Choose plot style theme (darkgrid, whitegrid, dark, white, ticks) (default: darkgrid)
 - ``--n-workers``: Number of parallel workers for plot generation (default: 4)
 - ``--export-stats``: Export statistical summary to CSV files
+
+**Using UV:**
+
+.. code:: bash
+
+	$ uv run python -m src example/titanic.csv example/titanic_dtypes.json example/output --theme whitegrid --n-workers 8 --export-stats
+
+**Using pip:**
 
 .. code:: bash
 
