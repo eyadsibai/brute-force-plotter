@@ -4,7 +4,6 @@ Unit tests for 3-variable plotting functions in brute_force_plotter.
 
 import os
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
 
@@ -71,7 +70,29 @@ def sample_1num_2cat_data(temp_dir):
     """Create a parquet file with 1 numeric and 2 categorical columns."""
     df = pd.DataFrame(
         {
-            "value": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105] * 3,
+            "value": [
+                10,
+                20,
+                30,
+                40,
+                50,
+                60,
+                70,
+                80,
+                90,
+                100,
+                15,
+                25,
+                35,
+                45,
+                55,
+                65,
+                75,
+                85,
+                95,
+                105,
+            ]
+            * 3,
             "cat1": ["A", "B", "C", "A", "B", "C"] * 10,
             "cat2": ["X", "Y", "X", "Y", "X", "Y"] * 10,
         }
@@ -86,9 +107,7 @@ class TestNumericNumericCategory:
 
     @pytest.mark.unit
     @pytest.mark.plotting
-    def test_creates_scatter_plot_with_hue(
-        self, temp_dir, sample_2num_1cat_data
-    ):
+    def test_creates_scatter_plot_with_hue(self, temp_dir, sample_2num_1cat_data):
         """Test that 2 numeric + 1 category creates scatter with hue."""
         from src import brute_force_plotter
 
@@ -113,9 +132,9 @@ class TestNumericNumericCategory:
 
         df = pd.read_parquet(sample_2num_1cat_data)
         file_name = os.path.join(temp_dir, "test_scatter_hue.png")
-        
+
         scatter_plot_with_hue(df, "num1", "num2", "category", file_name=file_name)
-        
+
         assert os.path.exists(file_name)
 
 
@@ -124,9 +143,7 @@ class TestNumericNumericNumeric:
 
     @pytest.mark.unit
     @pytest.mark.plotting
-    def test_creates_3d_scatter_and_contour(
-        self, temp_dir, sample_3d_numeric_data
-    ):
+    def test_creates_3d_scatter_and_contour(self, temp_dir, sample_3d_numeric_data):
         """Test that 3 numeric variables create 3D scatter and contour plots."""
         from src import brute_force_plotter
 
@@ -156,9 +173,9 @@ class TestNumericNumericNumeric:
 
         df = pd.read_parquet(sample_3d_numeric_data)
         file_name = os.path.join(temp_dir, "test_3d_scatter.png")
-        
+
         scatter_plot_3d(df, "var1", "var2", "var3", file_name=file_name)
-        
+
         assert os.path.exists(file_name)
 
     @pytest.mark.unit
@@ -172,9 +189,9 @@ class TestNumericNumericNumeric:
 
         df = pd.read_parquet(sample_3d_numeric_data)
         file_name = os.path.join(temp_dir, "test_contour.png")
-        
+
         contour_plot(df, "var1", "var2", "var3", file_name=file_name)
-        
+
         assert os.path.exists(file_name)
 
     @pytest.mark.unit
@@ -196,9 +213,9 @@ class TestNumericNumericNumeric:
         )
         file_path = os.path.join(temp_dir, "small_data.parquet")
         df.to_parquet(file_path)
-        
+
         file_name = os.path.join(temp_dir, "test_small_contour.png")
-        
+
         # Should not raise an error
         contour_plot(df, "x", "y", "z", file_name=file_name)
 
@@ -208,9 +225,7 @@ class TestCategoryCategoryCategory:
 
     @pytest.mark.unit
     @pytest.mark.plotting
-    def test_creates_multi_level_heatmap(
-        self, temp_dir, sample_3d_categorical_data
-    ):
+    def test_creates_multi_level_heatmap(self, temp_dir, sample_3d_categorical_data):
         """Test that 3 categorical variables create multi-level heatmap."""
         from src import brute_force_plotter
 
@@ -235,9 +250,9 @@ class TestCategoryCategoryCategory:
 
         df = pd.read_parquet(sample_3d_categorical_data)
         file_name = os.path.join(temp_dir, "test_multilevel.png")
-        
+
         multi_level_heatmap(df, "cat1", "cat2", "cat3", file_name=file_name)
-        
+
         assert os.path.exists(file_name)
 
     @pytest.mark.unit
@@ -259,12 +274,12 @@ class TestCategoryCategoryCategory:
         )
         file_path = os.path.join(temp_dir, "many_cats.parquet")
         df.to_parquet(file_path)
-        
+
         file_name = os.path.join(temp_dir, "test_many_cats.png")
-        
+
         # Should limit to first 10 categories
         multi_level_heatmap(df, "cat1", "cat2", "cat3", file_name=file_name)
-        
+
         assert os.path.exists(file_name)
 
 
@@ -273,9 +288,7 @@ class TestNumericCategoryCategory:
 
     @pytest.mark.unit
     @pytest.mark.plotting
-    def test_creates_grouped_visualizations(
-        self, temp_dir, sample_1num_2cat_data
-    ):
+    def test_creates_grouped_visualizations(self, temp_dir, sample_1num_2cat_data):
         """Test that 1 numeric + 2 categories creates grouped plots."""
         from src import brute_force_plotter
 
@@ -300,9 +313,9 @@ class TestNumericCategoryCategory:
 
         df = pd.read_parquet(sample_1num_2cat_data)
         file_name = os.path.join(temp_dir, "test_grouped.png")
-        
+
         grouped_bar_violin_plot(df, "value", "cat1", "cat2", file_name=file_name)
-        
+
         assert os.path.exists(file_name)
 
     @pytest.mark.unit
@@ -326,12 +339,12 @@ class TestNumericCategoryCategory:
         )
         file_path = os.path.join(temp_dir, "many_cat2.parquet")
         df.to_parquet(file_path)
-        
+
         file_name = os.path.join(temp_dir, "test_many_cat2.png")
-        
+
         # Should limit to first 10 categories
         grouped_bar_violin_plot(df, "value", "cat1", "cat2", file_name=file_name)
-        
+
         assert os.path.exists(file_name)
 
 
@@ -341,8 +354,8 @@ class TestThreeVariableIntegration:
     @pytest.mark.integration
     def test_create_plots_generates_3d_plots(self, temp_dir):
         """Test that create_plots generates 3-variable plots."""
-        from src.brute_force_plotter import create_plots
         import src.brute_force_plotter
+        from src.brute_force_plotter import create_plots
 
         src.brute_force_plotter._save_plots = True
         src.brute_force_plotter._show_plots = False
@@ -359,7 +372,7 @@ class TestThreeVariableIntegration:
                 "cat2": (["X", "Y"] * 26)[:n],
             }
         )
-        
+
         input_file = os.path.join(temp_dir, "test_input.parquet")
         df.to_parquet(input_file)
 
@@ -372,7 +385,7 @@ class TestThreeVariableIntegration:
         }
 
         # Create plots without dask for simplicity
-        plots = create_plots(input_file, dtypes, temp_dir, use_dask=False)
+        create_plots(input_file, dtypes, temp_dir, use_dask=False)
 
         # Check that 3D interactions directory was created
         three_d_path = os.path.join(temp_dir, "3d_interactions")
@@ -386,10 +399,11 @@ class TestThreeVariableIntegration:
     @pytest.mark.integration
     def test_create_plots_with_dask_generates_3d_plots(self, temp_dir):
         """Test that create_plots with Dask generates 3-variable plots."""
-        from src.brute_force_plotter import create_plots
-        import src.brute_force_plotter
         import dask
         from dask.distributed import Client, LocalCluster
+
+        import src.brute_force_plotter
+        from src.brute_force_plotter import create_plots
 
         src.brute_force_plotter._save_plots = True
         src.brute_force_plotter._show_plots = False
@@ -402,7 +416,7 @@ class TestThreeVariableIntegration:
                 "c": [x * 3 for x in range(30)],
             }
         )
-        
+
         input_file = os.path.join(temp_dir, "test_dask.parquet")
         df.to_parquet(input_file)
 
@@ -415,18 +429,20 @@ class TestThreeVariableIntegration:
         # Create plots with Dask
         cluster = LocalCluster(n_workers=2, silence_logs=40)
         client = Client(cluster)
-        
+
         try:
             plots = create_plots(input_file, dtypes, temp_dir, use_dask=True)
             dask.compute(*plots)
-            
+
             # Check that 3D interactions directory was created
             three_d_path = os.path.join(temp_dir, "3d_interactions")
             assert os.path.exists(three_d_path)
-            
+
             # Should have at least the 3D scatter and contour for a-b-c
             files_in_3d = os.listdir(three_d_path)
-            assert len(files_in_3d) > 0, "No 3D interaction plots were created with Dask"
+            assert len(files_in_3d) > 0, (
+                "No 3D interaction plots were created with Dask"
+            )
         finally:
             client.close()
             cluster.close()
