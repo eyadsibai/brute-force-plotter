@@ -42,6 +42,28 @@ def sample_timeseries_parquet(temp_dir, sample_timeseries_data):
     return parquet_path
 
 
+@pytest.fixture
+def temp_parquet_file(temp_dir):
+    """Create a temporary parquet file from a DataFrame and clean it up after test."""
+    parquet_files = []
+
+    def _create_parquet(data):
+        with tempfile.NamedTemporaryFile(
+            suffix=".parq", delete=False, dir=temp_dir
+        ) as tmp:
+            parquet_path = tmp.name
+        data.to_parquet(parquet_path)
+        parquet_files.append(parquet_path)
+        return parquet_path
+
+    yield _create_parquet
+
+    # Cleanup
+    for parquet_path in parquet_files:
+        if os.path.exists(parquet_path):
+            os.remove(parquet_path)
+
+
 class TestSingleTimeSeriesPlot:
     """Tests for single time series plotting."""
 
@@ -61,7 +83,7 @@ class TestSingleTimeSeriesPlot:
 
     @pytest.mark.unit
     @pytest.mark.plotting
-    def test_handles_non_datetime_timeseries(self, temp_dir):
+    def test_handles_non_datetime_timeseries(self, temp_dir, temp_parquet_file):
         """Test that time series plot handles non-datetime columns by converting them."""
         from src import brute_force_plotter
 
@@ -76,18 +98,11 @@ class TestSingleTimeSeriesPlot:
             }
         )
 
-        with tempfile.NamedTemporaryFile(suffix=".parq", delete=False) as tmp:
-            parquet_path = tmp.name
-        data.to_parquet(parquet_path)
+        parquet_path = temp_parquet_file(data)
+        plot_single_timeseries_sync(parquet_path, "date", temp_dir)
 
-        try:
-            plot_single_timeseries_sync(parquet_path, "date", temp_dir)
-
-            expected_file = os.path.join(temp_dir, "date-timeseries-plot.png")
-            assert os.path.exists(expected_file)
-        finally:
-            if os.path.exists(parquet_path):
-                os.remove(parquet_path)
+        expected_file = os.path.join(temp_dir, "date-timeseries-plot.png")
+        assert os.path.exists(expected_file)
 
 
 class TestTimeSeriesNumericPlot:
@@ -111,7 +126,9 @@ class TestTimeSeriesNumericPlot:
 
     @pytest.mark.unit
     @pytest.mark.plotting
-    def test_handles_missing_values_in_timeseries_numeric(self, temp_dir):
+    def test_handles_missing_values_in_timeseries_numeric(
+        self, temp_dir, temp_parquet_file
+    ):
         """Test that time series-numeric plot handles missing values."""
         from src import brute_force_plotter
 
@@ -127,18 +144,11 @@ class TestTimeSeriesNumericPlot:
             }
         )
 
-        with tempfile.NamedTemporaryFile(suffix=".parq", delete=False) as tmp:
-            parquet_path = tmp.name
-        data.to_parquet(parquet_path)
+        parquet_path = temp_parquet_file(data)
+        plot_timeseries_numeric_sync(parquet_path, "date", "value", temp_dir)
 
-        try:
-            plot_timeseries_numeric_sync(parquet_path, "date", "value", temp_dir)
-
-            expected_file = os.path.join(temp_dir, "date-value-timeseries-plot.png")
-            assert os.path.exists(expected_file)
-        finally:
-            if os.path.exists(parquet_path):
-                os.remove(parquet_path)
+        expected_file = os.path.join(temp_dir, "date-value-timeseries-plot.png")
+        assert os.path.exists(expected_file)
 
 
 class TestTimeSeriesTimeSeriesPlot:
@@ -146,9 +156,7 @@ class TestTimeSeriesTimeSeriesPlot:
 
     @pytest.mark.unit
     @pytest.mark.plotting
-    def test_creates_timeseries_comparison_plot(
-        self, temp_dir, sample_timeseries_parquet
-    ):
+    def test_creates_timeseries_comparison_plot(self, temp_dir, temp_parquet_file):
         """Test that time series comparison plot is created."""
         from src import brute_force_plotter
 
@@ -160,20 +168,11 @@ class TestTimeSeriesTimeSeriesPlot:
         dates2 = pd.date_range(start="2023-01-05", periods=10, freq="D")
         data = pd.DataFrame({"date1": dates1, "date2": dates2})
 
-        with tempfile.NamedTemporaryFile(suffix=".parq", delete=False) as tmp:
-            parquet_path = tmp.name
-        data.to_parquet(parquet_path)
+        parquet_path = temp_parquet_file(data)
+        plot_timeseries_timeseries_sync(parquet_path, "date1", "date2", temp_dir)
 
-        try:
-            plot_timeseries_timeseries_sync(parquet_path, "date1", "date2", temp_dir)
-
-            expected_file = os.path.join(
-                temp_dir, "date1-date2-timeseries-comparison.png"
-            )
-            assert os.path.exists(expected_file)
-        finally:
-            if os.path.exists(parquet_path):
-                os.remove(parquet_path)
+        expected_file = os.path.join(temp_dir, "date1-date2-timeseries-comparison.png")
+        assert os.path.exists(expected_file)
 
 
 class TestTimeSeriesCategoryNumericPlot:
@@ -197,7 +196,7 @@ class TestTimeSeriesCategoryNumericPlot:
 
     @pytest.mark.unit
     @pytest.mark.plotting
-    def test_handles_multiple_categories(self, temp_dir):
+    def test_handles_multiple_categories(self, temp_dir, temp_parquet_file):
         """Test that grouped time series handles multiple categories."""
         from src import brute_force_plotter
 
@@ -214,22 +213,13 @@ class TestTimeSeriesCategoryNumericPlot:
             }
         )
 
-        with tempfile.NamedTemporaryFile(suffix=".parq", delete=False) as tmp:
-            parquet_path = tmp.name
-        data.to_parquet(parquet_path)
+        parquet_path = temp_parquet_file(data)
+        plot_timeseries_category_numeric_sync(
+            parquet_path, "date", "category", "value", temp_dir
+        )
 
-        try:
-            plot_timeseries_category_numeric_sync(
-                parquet_path, "date", "category", "value", temp_dir
-            )
-
-            expected_file = os.path.join(
-                temp_dir, "date-value-by-category-timeseries.png"
-            )
-            assert os.path.exists(expected_file)
-        finally:
-            if os.path.exists(parquet_path):
-                os.remove(parquet_path)
+        expected_file = os.path.join(temp_dir, "date-value-by-category-timeseries.png")
+        assert os.path.exists(expected_file)
 
 
 class TestTimeSeriesHelperFunctions:
