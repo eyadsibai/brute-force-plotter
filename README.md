@@ -128,13 +128,13 @@ $ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
 **Using UV:**
 
 ```bash
-$ uv run brute-force-plotter example/titanic.csv example/output --infer-dtypes --save-dtypes dtypes.json --theme whitegrid --n-workers 8 --export-stats
+$ uv run brute-force-plotter example/titanic.csv example/output --infer-dtypes --save-dtypes example/auto_dtypes.json --theme whitegrid --n-workers 8 --export-stats
 ```
 
 **Using pip:**
 
 ```bash
-$ python3 -m src example/titanic.csv example/output --infer-dtypes --save-dtypes dtypes.json --theme whitegrid --n-workers 8 --export-stats
+$ python3 -m src example/titanic.csv example/output --infer-dtypes --save-dtypes example/auto_dtypes.json --theme whitegrid --n-workers 8 --export-stats
 ```
 
 ## Arguments
