@@ -24,7 +24,8 @@ Brute Force Plotter is a Python tool designed to visualize data quickly with min
   - `titanic.csv` - Sample CSV data
   - `titanic_dtypes.json` - Data type definitions
   - `output/` - Generated plots directory
-- `requirements.txt` - Python dependencies
+- `pyproject.toml` - Python project configuration and dependencies
+- `uv.lock` - Locked dependency versions for reproducibility
 - `README.md` - Documentation in Markdown format
 
 ## Running the Tool
@@ -45,13 +46,13 @@ python3 -m src <input_file.csv> <dtypes.json> <output_directory>
 
 ### Example:
 ```bash
-python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
+uv run python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
 ```
 
 ## Installation
 
 ```bash
-pip3 install -r requirements.txt
+uv sync
 ```
 
 ## Code Style and Conventions
