@@ -49,24 +49,6 @@ source .venv/bin/activate  # On Linux/Mac
 .venv\Scripts\activate  # On Windows
 ```
 
-### Using pip (Traditional)
-
-```bash
-# Clone the repository
-git clone https://github.com/eyadsibai/brute-force-plotter.git
-cd brute-force-plotter
-
-# Create a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Linux/Mac
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install development dependencies
-pip install pytest pytest-cov ruff pre-commit
-```
-
 ## Code Quality Tools
 
 This project uses several tools to maintain code quality:
@@ -188,9 +170,6 @@ Currently, the project has minimal test coverage. When adding new features:
 ```bash
 # Using UV
 uv run python -m src example/titanic.csv example/titanic_dtypes.json example/output
-
-# Using pip
-python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
 ```
 
 ### Running Tests
@@ -226,7 +205,7 @@ pytest
 3. **Test your changes:**
    ```bash
    # Run with example data
-   python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
+   uv run python -m src example/titanic.csv example/titanic_dtypes.json example/output
    ```
 
 4. **Push your changes:**
