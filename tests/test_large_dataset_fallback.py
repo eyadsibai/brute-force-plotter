@@ -327,7 +327,6 @@ class TestPlotWithLargeDatasetFallback:
         assert any("Sampling" in msg for msg in log_messages)
 
         # Check that we're informed about using full dataset for stats
-        # The message is at line 261-264
         assert any(
             "Statistical summaries" in msg and "full dataset" in msg
             for msg in log_messages
