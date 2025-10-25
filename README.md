@@ -292,6 +292,19 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 - Submitting pull requests
 - Coding standards and best practices
 
+## Contributors
+
+### Code Contributors
+
+- Eyad Sibai / [@eyadsibai](https://github.com/eyadsibai)
+
+### Special Thanks
+
+The following haven't provided code directly, but have provided guidance and advice:
+
+- Andreas Meisingseth / [@AndreasMeisingseth](https://github.com/AndreasMeisingseth)
+- Tom Baylis / [@tbaylis](https://github.com/tbaylis)
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
