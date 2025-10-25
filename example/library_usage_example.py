@@ -40,7 +40,7 @@ output_dir = bfp.plot(
     output_path='./output_from_library',
     show=False,  # Set to True to display plots interactively
     use_dask=False,  # Set to True to use parallel processing with Dask
-    export_stats=True  # Export statistical summaries to CSV files
+    export_stats=True,  # Export statistical summaries to CSV files
 )
 
 print(f"✓ Plots saved to: {output_dir}")
