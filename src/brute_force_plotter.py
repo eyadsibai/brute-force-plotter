@@ -552,7 +552,7 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
     for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
         dtypes.items(), 3
     ):
-        print(col1, col2, col3)
+        logger.debug(f"Processing 3-variable interaction: {col1}, {col2}, {col3}")
 
         # Skip if any column should be ignored
         if any(dtype == "i" for dtype in [dtype1, dtype2, dtype3]):
