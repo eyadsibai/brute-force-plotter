@@ -776,6 +776,8 @@ def plot_numeric_category_category_sync(input_file, num_col, cat_col1, cat_col2,
     df = pd.read_parquet(input_file, columns=[num_col, cat_col1, cat_col2])
     file_name = os.path.join(path, f"{num_col}-{cat_col1}-{cat_col2}-grouped.png")
     grouped_bar_violin_plot(df, num_col, cat_col1, cat_col2, file_name=file_name)
+
+
 @dask.delayed
 def plot_single_timeseries(input_file, time_col, path):
     """Plot a single time series column"""
@@ -1047,47 +1049,8 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
 
     # 3-variable interactions
     logger.info("Adding 3-variable interaction plots...")
-    for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
-        dtypes.items(), 3
-    ):
-        logger.debug(f"Processing 3-variable interaction: {col1}, {col2}, {col3}")
-
-        # Skip if any column should be ignored
-        if any(dtype == "i" for dtype in [dtype1, dtype2, dtype3]):
-            # for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
-            # dtypes.items(), 3):
-            #     print(col1, col2, col3)
-            #     dtypes_array = [dtype1, dtype2, dtype3]
-            #     all_categories = all(dtype == 'c' for dtype in dtypes_array)
-            #     all_numeric = all(dtype == 'n' for dtype in dtypes_array)
-            #
-            #     if any(col in ignore for col in [col1, col2, col3]):
-            #         continue
-            #     if all_categories:
-            #         plot_categorical_categorical_categorical(three_d_interactions_path)
-            #     if all_numeric:
-            #         plot_numeric_numeric_numeric(three_d_interactions_path)
-            # if dtype1 == 'c' and dtype2 == 'n' and dtype3 == 'n':
-            #     plot_numeric_numeric_category(df, col2, col3, col1,
-            #                                   three_d_interactions_path)
-            #
-            # if dtype1 == 'c' and dtype2 == 'c' and dtype3 == 'n':
-            #     plot_numeric_category_category(df, col3, col1, col3,
-            #                                    three_d_interactions_path)
-            # if dtype1 == 'c' and dtype2 == 'n' and dtype3 == 'c':
-            #     plot_numeric_category_category(df, col2, col1, col3,
-            #                                    three_d_interactions_path)
-            # if dtype1 == 'n' and dtype2 == 'n' and dtype3 == 'c':
-            #     plot_numeric_numeric_category(df, col1, col2, col3,
-            #                                   three_d_interactions_path)
-            # if dtype1 == 'n' and dtype2 == 'c' and dtype3 == 'c':
-            #     plot_numeric_category_category(df, col1, col2, col3,
-            #                                    three_d_interactions_path)
-            # if dtype1 == 'n' and dtype2 == 'c' and dtype3 == 'n':
-            #     plot_numeric_numeric_category(df, col1, col3, col2,
-            #                                   three_d_interactions_path)
-
-    # 3-way interactions: time series + category + numeric
+    # 3-variable interactions
+    logger.info("Adding 3-variable interaction plots...")
     for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
         dtypes.items(), 3
     ):
@@ -1190,6 +1153,17 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
             else:
                 plot_numeric_category_category_sync(
                     input_file, col3, col1, col2, three_d_interactions_path
+                )
+
+    # 3-way interactions: time series + category + numeric
+    for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
+        dtypes.items(), 3
+    ):
+        if dtype1 == "i" or dtype2 == "i" or dtype3 == "i":
+            continue
+        if any(col in ignore for col in [col1, col2, col3]):
+            continue
+
         # Find time, category, and numeric columns
         time_col = None
         category_col = None
@@ -1587,6 +1561,8 @@ def grouped_bar_violin_plot(data, num_col, cat_col1, cat_col2, file_name=None):
 
     plt.tight_layout()
     sns.despine(left=True)
+
+
 @ignore_if_exist_or_save
 def time_series_line_plot(data, time_col, file_name=None):
     """Create a timeline plot showing the distribution of datetime values"""
