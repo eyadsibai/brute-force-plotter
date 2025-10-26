@@ -108,7 +108,9 @@ class TestInferDtypes:
         data = pd.DataFrame(
             {
                 "timestamp": pd.date_range("2024-01-01", periods=100),
-                "date": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"] * 33 + ["2024-01-01"]),
+                "date": pd.to_datetime(
+                    ["2024-01-01", "2024-01-02", "2024-01-03"] * 33 + ["2024-01-01"]
+                ),
             }
         )
 
@@ -166,8 +168,10 @@ class TestInferDtypes:
         n_rows = 100
         data = pd.DataFrame(
             {
-                "col1": list(range(20)) * (n_rows // 20),  # 20 unique values, 100 total = 20% ratio
-                "col2": list(range(60)) + list(range(40)),  # 60 unique values, 100 total = 60% ratio
+                "col1": list(range(20))
+                * (n_rows // 20),  # 20 unique values, 100 total = 20% ratio
+                "col2": list(range(60))
+                + list(range(40)),  # 60 unique values, 100 total = 60% ratio
             }
         )
 
@@ -177,7 +181,9 @@ class TestInferDtypes:
         assert dtypes_default["col2"] == "n"  # 60 unique > 50
 
         # With higher unique threshold and ratio (max 70 unique, max 25% ratio)
-        dtypes_high = infer_dtypes(data, max_categorical_unique=70, max_categorical_ratio=0.25)
+        dtypes_high = infer_dtypes(
+            data, max_categorical_unique=70, max_categorical_ratio=0.25
+        )
         assert dtypes_high["col1"] == "c"  # 20 unique < 70 AND 20% ratio < 25%
         assert dtypes_high["col2"] == "n"  # 60 unique < 70 BUT 60% ratio > 25%
 
@@ -236,15 +242,16 @@ class TestInferDtypes:
         data = pd.DataFrame(
             {
                 "low_ratio": [1, 1, 1, 2, 2] * 20,  # 2 unique / 100 total = 2% ratio
-                "high_ratio": list(range(50))
-                * 2,  # 50 unique / 100 total = 50% ratio
+                "high_ratio": list(range(50)) * 2,  # 50 unique / 100 total = 50% ratio
             }
         )
 
         # Default ratio threshold is 5%
         dtypes = infer_dtypes(data, max_categorical_ratio=0.05)
         assert dtypes["low_ratio"] == "c"  # 2% < 5% AND 2 <= 50
-        assert dtypes["high_ratio"] == "n"  # 50% > 5%, so numeric even though 50 unique <= 50
+        assert (
+            dtypes["high_ratio"] == "n"
+        )  # 50% > 5%, so numeric even though 50 unique <= 50
 
         # Higher ratio threshold
         dtypes_high = infer_dtypes(data, max_categorical_ratio=0.60)

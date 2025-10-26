@@ -27,7 +27,7 @@ output_dir, inferred_dtypes = bfp.plot(
 )
 
 print(f"✓ Plots saved to: {output_dir}")
-print(f"✓ Inferred data types:")
+print("✓ Inferred data types:")
 for col, dtype in sorted(inferred_dtypes.items()):
     dtype_name = {"n": "numeric", "c": "categorical", "i": "ignore"}[dtype]
     print(f"    {col:15} -> {dtype_name}")
@@ -138,4 +138,3 @@ print(f"✓ Simple plots saved to: {output_dir5}")
 print(f"✓ Auto-inferred types: {simple_dtypes}")
 
 print("\n✓ All examples completed successfully!")
-

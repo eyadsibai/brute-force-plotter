@@ -94,7 +94,10 @@ def infer_dtypes(data, max_categorical_ratio=0.05, max_categorical_unique=50):
                 inferred_dtypes[col] = "i"
             # Check if it should be categorical
             # Use AND for the conditions: both must be true
-            elif n_unique <= max_categorical_unique and unique_ratio <= max_categorical_ratio:
+            elif (
+                n_unique <= max_categorical_unique
+                and unique_ratio <= max_categorical_ratio
+            ):
                 inferred_dtypes[col] = "c"
             else:
                 inferred_dtypes[col] = "n"
