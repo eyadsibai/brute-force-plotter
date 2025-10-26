@@ -67,7 +67,7 @@ dtypes = bfp.infer_dtypes(data)
 bfp.plot(data, dtypes, output_path='./plots')
 ```
 
-See [example/library_usage_example.py](https://github.com/eyadsibai/brute_force_plotter/example/library_usage_example.py) for more examples.
+See [example/library_usage_example.py](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/library_usage_example.py) for more examples.
 
 **As a Command-Line Tool**
 
@@ -100,6 +100,9 @@ $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json exa
 - `--export-stats`: Export statistical summary to CSV files
 - `--infer-dtypes`: Automatically infer data types from the data (NEW!)
 - `--save-dtypes PATH`: Save inferred or used dtypes to a JSON file (NEW!)
+- `--max-rows`: Maximum number of rows before sampling is applied (default: 100,000)
+- `--sample-size`: Number of rows to sample for large datasets (default: 50,000)
+- `--no-sample`: Disable sampling for large datasets (may cause memory issues)
 
 **Using UV:**
 
@@ -107,11 +110,57 @@ $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json exa
 $ uv run brute-force-plotter example/titanic.csv example/output --infer-dtypes --save-dtypes example/auto_dtypes.json --theme whitegrid --n-workers 8 --export-stats
 ```
 
+
+## Large Dataset Handling
+
+For datasets exceeding 100,000 rows, brute-force-plotter automatically samples the data to improve performance and reduce memory usage. This ensures plots are generated quickly even with millions of rows.
+
+**Default Behavior:**
+- Datasets with ≤ 100,000 rows: No sampling, all data is used
+- Datasets with > 100,000 rows: Automatically samples 50,000 rows for visualization
+- Statistical exports (`--export-stats`) always use the full dataset for accuracy
+
+**Customization:**
+
+```bash
+# Increase sampling threshold to 200,000 rows
+$ python3 -m src data.csv dtypes.json output --max-rows 200000
+
+# Use a larger sample size (75,000 rows)
+$ python3 -m src data.csv dtypes.json output --sample-size 75000
+
+# Disable sampling entirely (use with caution for very large datasets)
+$ python3 -m src data.csv dtypes.json output --no-sample
+```
+
+**Library Usage:**
+
+```python
+import pandas as pd
+import brute_force_plotter as bfp
+
+# Load a large dataset
+data = pd.read_csv('large_data.csv')  # e.g., 500,000 rows
+
+dtypes = {'col1': 'n', 'col2': 'c'}
+
+# Automatic sampling (default: max_rows=100000, sample_size=50000)
+bfp.plot(data, dtypes, output_path='./plots')
+
+# Custom sampling parameters
+bfp.plot(data, dtypes, output_path='./plots', max_rows=200000, sample_size=75000)
+
+# Disable sampling
+bfp.plot(data, dtypes, output_path='./plots', no_sample=True)
+```
+
+**Note:** Sampling uses a fixed random seed (42) for reproducibility, ensuring consistent results across multiple runs.
+
 ## Arguments
 
 - json.dump({k:v.name for k,v in df.dtypes.to_dict().items()},open('dtypes.json','w'))  
-- the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute_force_plotter/example/titanic.csv)
-- second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json)
+- the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/titanic.csv)
+- second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/titanic_dtypes.json)
 
 ```json
 {
@@ -172,10 +221,7 @@ The tool automatically generates:
 ## TODO
 
 - target variable support
-- ~~Tests?~~ ✅ Comprehensive test suite added!
 - Support 3 variables (contour plots/ etc)
-- Fallback for large datasets
-- ~~Figure out the data type or suggest some~~ ✅ Automatic data type inference added!
 - Map visualization (if geocoordinates)
 - Minimize the number of plots
 - Support for Time Series
@@ -209,7 +255,7 @@ $ pytest -v
 
 The test suite achieves ~96% code coverage and includes:
 
-- **Unit tests**: Core plotting functions, utilities, statistical exports
+- **Unit tests**: Core plotting functions, utilities, statistical exports, large dataset handling
 - **Integration tests**: CLI interface, library interface, end-to-end workflows
 - **Edge case tests**: Empty data, missing values, many categories, Unicode support
 
@@ -299,6 +345,8 @@ Pre-commit hooks ensure that:
 ✅ Code cleanup and better error handling
 ✅ **Comprehensive test suite with 96% coverage**
 ✅ **Automatic data type inference** - No need to manually specify data types!
+✅ **Comprehensive test suite with 96% coverage (81+ tests)**
+✅ **Large dataset fallback with automatic sampling**
 
 ## Contributing
 
@@ -308,6 +356,19 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 - Using code quality tools (Ruff, pre-commit)
 - Submitting pull requests
 - Coding standards and best practices
+
+## Contributors
+
+### Code Contributors
+
+- Eyad Sibai / [@eyadsibai](https://github.com/eyadsibai)
+
+### Special Thanks
+
+The following haven't provided code directly, but have provided guidance and advice:
+
+- Andreas Meisingseth / [@AndreasMeisingseth](https://github.com/AndreasMeisingseth)
+- Tom Baylis / [@tbaylis](https://github.com/tbaylis)
 
 ## License
 
