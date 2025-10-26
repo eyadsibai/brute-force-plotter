@@ -7,6 +7,7 @@ and formatting checks.
 
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
 
@@ -22,10 +23,11 @@ class TestRuffLinting:
 
         # Run ruff check
         result = subprocess.run(
-            ["python3", "-m", "ruff", "check", "."],
+            [sys.executable, "-m", "ruff", "check", "."],
             cwd=repo_root,
             capture_output=True,
             text=True,
+            timeout=60,
         )
 
         # Assert that ruff check passed
@@ -43,10 +45,11 @@ class TestRuffLinting:
 
         # Run ruff format check
         result = subprocess.run(
-            ["python3", "-m", "ruff", "format", "--check", "."],
+            [sys.executable, "-m", "ruff", "format", "--check", "."],
             cwd=repo_root,
             capture_output=True,
             text=True,
+            timeout=60,
         )
 
         # Assert that ruff format check passed
