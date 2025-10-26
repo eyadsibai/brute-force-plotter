@@ -44,6 +44,7 @@ import brute_force_plotter as bfp
 # Load your data
 data = pd.read_csv('data.csv')
 
+# Define data types (c=category, n=numeric, t=timeseries, i=ignore)
 # Option 1: Automatic type inference (NEW!)
 output_path, dtypes = bfp.plot(data)
 print(f"Inferred types: {dtypes}")
@@ -52,7 +53,8 @@ print(f"Inferred types: {dtypes}")
 dtypes = {
     'column1': 'n',  # numeric
     'column2': 'c',  # category
-    'column3': 'i'   # ignore
+    'column3': 't',  # time series (datetime)
+    'column4': 'i'   # ignore
 }
 
 # Create and save plots (always returns tuple)
@@ -133,6 +135,35 @@ $ python3 -m src data.csv dtypes.json output --sample-size 75000
 $ python3 -m src data.csv dtypes.json output --no-sample
 ```
 
+## Time Series Example
+
+The tool now supports time series data! Here's how to visualize time series:
+
+```bash
+# Generate example time series data
+$ python3 example/timeseries_example.py
+
+# Plot the time series data
+$ python3 -m src example/timeseries_data.csv example/timeseries_dtypes.json example/timeseries_output
+```
+
+The time series example generates plots for:
+- Single time series line plots
+- Numeric values over time (e.g., sales over time)
+- Multiple time series overlays
+- Grouped time series by category (e.g., sales by region over time)
+
+**Time Series dtypes example:**
+```json
+{
+  "date": "t",           # time series column
+  "temperature": "n",    # numeric - will plot over time
+  "sales": "n",          # numeric - will plot over time
+  "region": "c",         # category - will group time series
+  "id": "i"              # ignore
+}
+```
+
 **Library Usage:**
 
 ```python
@@ -159,6 +190,8 @@ bfp.plot(data, dtypes, output_path='./plots', no_sample=True)
 ## Arguments
 
 - json.dump({k:v.name for k,v in df.dtypes.to_dict().items()},open('dtypes.json','w'))  
+- the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute_force_plotter/example/titanic.csv)
+- second argument is a json file with the data types of each columns (c for category, n for numeric, t for time series, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json)
 - the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/titanic.csv)
 - second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/titanic_dtypes.json)
 
@@ -180,7 +213,7 @@ bfp.plot(data, dtypes, output_path='./plots', no_sample=True)
 ```
 
 - third argument is the output directory
-- c stands for category, i stands for ignore, n for numeric
+- **c** stands for category, **i** stands for ignore, **n** for numeric, **t** for time series (datetime)
 
 ## Features
 
@@ -191,6 +224,7 @@ The tool automatically generates:
 - Histogram with KDE for numeric variables
 - Violin plots for numeric variables
 - Bar plots for categorical variables
+- Line plots for time series variables
 - Correlation matrices (Pearson and Spearman)
 - Missing values heatmap
 
@@ -199,6 +233,13 @@ The tool automatically generates:
 - Scatter plots for numeric vs numeric
 - Heatmaps for categorical vs categorical
 - Bar/Box/Violin/Strip plots for categorical vs numeric
+- Line plots for time series vs numeric (values over time)
+- Multiple time series overlays for time series vs time series
+
+**3D Interaction Plots:**
+
+- Grouped time series plots (time series + category + numeric)
+  - Shows how numeric values change over time, grouped by categorical values
 
 **Statistical Summaries (with --export-stats):**
 
@@ -224,7 +265,7 @@ The tool automatically generates:
 - Support 3 variables (contour plots/ etc)
 - Map visualization (if geocoordinates)
 - Minimize the number of plots
-- Support for Time Series
+- ~~Support for Time Series~~ ✅ Time series support added!
 
 ## Testing
 
@@ -344,6 +385,7 @@ Pre-commit hooks ensure that:
 ✅ Improved logging and progress indicators
 ✅ Code cleanup and better error handling
 ✅ **Comprehensive test suite with 96% coverage**
+✅ **Time series support with line plots, grouped plots, and multi-series overlays**
 ✅ **Automatic data type inference** - No need to manually specify data types!
 ✅ **Comprehensive test suite with 96% coverage (81+ tests)**
 ✅ **Large dataset fallback with automatic sampling**
