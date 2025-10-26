@@ -215,7 +215,7 @@ class TestPlotLibraryFunction:
         """Test that minimal mode generates fewer plots."""
         # First, generate plots in normal mode
         normal_dir = os.path.join(temp_dir, "normal")
-        plot(
+        _, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=normal_dir,
@@ -226,7 +226,7 @@ class TestPlotLibraryFunction:
 
         # Then, generate plots in minimal mode
         minimal_dir = os.path.join(temp_dir, "minimal")
-        plot(
+        _, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=minimal_dir,
@@ -257,7 +257,7 @@ class TestPlotLibraryFunction:
     @pytest.mark.integration
     def test_plot_minimal_mode_correlation(self, sample_mixed_data, mixed_dtypes, temp_dir):
         """Test that minimal mode only creates Spearman correlation."""
-        plot(
+        _, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=temp_dir,
@@ -277,7 +277,7 @@ class TestPlotLibraryFunction:
         self, sample_mixed_data, mixed_dtypes, temp_dir
     ):
         """Test that minimal mode creates minimal category-numeric plots."""
-        plot(
+        _, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=temp_dir,
@@ -304,7 +304,7 @@ class TestPlotLibraryFunction:
         self, sample_mixed_data, mixed_dtypes, temp_dir
     ):
         """Test that minimal mode only creates heatmap for category-category."""
-        plot(
+        _, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=temp_dir,
@@ -372,7 +372,7 @@ class TestPlotLibraryFunction:
 
         dtypes = {"date": "t", "value": "n", "category": "c"}
 
-        plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
+        _, _ = plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
 
         # Check that time series plots were created
         dist_dir = os.path.join(temp_dir, "distributions")
@@ -409,7 +409,7 @@ class TestPlotLibraryFunction:
 
         dtypes = {"date1": "t", "date2": "t", "value": "n"}
 
-        plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
+        _, _ = plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
 
         # Check that time series comparison plot was created
         interactions_dir = os.path.join(temp_dir, "2d_interactions")
