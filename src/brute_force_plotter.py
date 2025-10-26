@@ -461,7 +461,9 @@ def plot(
                 client.close()
                 cluster.close()
         else:
-            plots = create_plots(temp_parquet, dtypes, output_path, use_dask=False, minimal=minimal)
+            plots = create_plots(
+                temp_parquet, dtypes, output_path, use_dask=False, minimal=minimal
+            )
             if plots:
                 for plot_task in plots:
                     plot_task.compute()
