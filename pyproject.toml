@@ -36,6 +36,7 @@ dependencies = [
     "pyarrow>=22.0.0",
     "dask[distributed]>=2025.10.0",
     "scipy>=1.10.0",
+    "folium>=0.19.2",
 ]
 
 [project.optional-dependencies]
