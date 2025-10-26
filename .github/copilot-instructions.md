@@ -18,12 +18,32 @@ Brute Force Plotter is a Python tool designed to visualize data quickly with min
 ## Project Structure
 
 - `src/` - Main source code directory
-  - `__main__.py` - Entry point for the module
-  - `brute_force_plotter.py` - Core plotting logic and CLI
+  - `__init__.py` - Package initialization and public API
+  - `__main__.py` - Entry point for module execution
+  - `brute_force_plotter.py` - Backward compatibility layer
+  - `library.py` - Python library interface
+  - `core/` - Core functionality
+    - `config.py` - Global configuration and constants
+    - `data_types.py` - Data type inference logic
+    - `utils.py` - Utility functions
+  - `plotting/` - Plotting modules
+    - `base.py` - Base plotting functions and decorators
+    - `single_variable.py` - 1D distribution plots
+    - `two_variable.py` - 2D interaction plots
+    - `three_variable.py` - 3D interaction plots
+    - `summary.py` - Correlation and missing values plots
+    - `timeseries.py` - Time series visualizations
+    - `maps.py` - Geographic map visualizations
+  - `stats/` - Statistical exports
+    - `export.py` - Statistical summary export
+  - `cli/` - Command-line interface
+    - `commands.py` - Click CLI commands
+    - `orchestration.py` - Plot generation orchestration
 - `example/` - Example data and output
   - `titanic.csv` - Sample CSV data
   - `titanic_dtypes.json` - Data type definitions
   - `output/` - Generated plots directory
+- `tests/` - Test suite (143 tests, ~96% coverage)
 - `pyproject.toml` - Python project configuration and dependencies
 - `uv.lock` - Locked dependency versions for reproducibility
 - `README.md` - Documentation in Markdown format
@@ -129,15 +149,50 @@ pytest -m edge_case     # Edge case tests only
 - No time series support
 - No geographic visualization support
 
+## Code Organization and Architecture
+
+The codebase is organized into modular components for maintainability:
+
+### Module Structure
+
+- **core/**: Core functionality shared across modules
+  - `config.py`: Global configuration, constants, and state management
+  - `data_types.py`: Automatic data type inference logic
+  - `utils.py`: Utility functions (path handling, decorators, sampling)
+
+- **plotting/**: All visualization logic organized by plot type
+  - `base.py`: Common plotting functions and decorators
+  - `single_variable.py`: Distribution plots for individual variables
+  - `two_variable.py`: Interaction plots between two variables
+  - `three_variable.py`: 3D visualizations for three variables
+  - `summary.py`: Correlation matrices and missing value analysis
+  - `timeseries.py`: Time series specific visualizations
+  - `maps.py`: Geographic map generation with Folium
+
+- **stats/**: Statistical analysis and export
+  - `export.py`: CSV export of statistical summaries
+
+- **cli/**: Command-line interface
+  - `commands.py`: Click command definitions and argument parsing
+  - `orchestration.py`: Main plot generation orchestration logic
+
+- **library.py**: Programmatic Python API for use in scripts
+
+- **brute_force_plotter.py**: Backward compatibility layer that re-exports all functions for existing code
+
+This modular structure reduces merge conflicts when multiple features are developed in parallel and makes the codebase easier to navigate and maintain.
+
 ## Making Changes
 
 When modifying this codebase:
-- Maintain backward compatibility with existing dtypes JSON format
+- Maintain backward compatibility by ensuring `brute_force_plotter.py` re-exports new functions
+- Keep modules focused: plotting code in plotting/, core utilities in core/, etc.
 - Ensure parallel processing with Dask continues to work
 - Keep plot generation functions as `@dask.delayed` for performance
 - Test with the example titanic dataset
 - Update README.md for user-facing changes
 - Consider matplotlib/seaborn version compatibility
+- Run the full test suite (143 tests) to ensure no regressions
 
 ## Code Quality and Linting
 

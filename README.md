@@ -471,6 +471,37 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 - Submitting pull requests
 - Coding standards and best practices
 
+## Code Organization
+
+The project follows a modular architecture for better maintainability and reduced merge conflicts:
+
+```
+src/
+├── core/               # Core functionality
+│   ├── config.py      # Global configuration
+│   ├── data_types.py  # Type inference
+│   └── utils.py       # Utilities
+├── plotting/          # Visualization modules
+│   ├── base.py        # Common plotting functions
+│   ├── single_variable.py
+│   ├── two_variable.py
+│   ├── three_variable.py
+│   ├── summary.py
+│   ├── timeseries.py
+│   └── maps.py
+├── stats/             # Statistical exports
+│   └── export.py
+├── cli/               # Command-line interface
+│   ├── commands.py
+│   └── orchestration.py
+├── library.py         # Python API
+└── brute_force_plotter.py  # Compatibility layer
+```
+
+This structure enables parallel development and makes it easier to locate and modify specific functionality.
+
+## Contributors
+
 ## Contributors
 
 ### Code Contributors
