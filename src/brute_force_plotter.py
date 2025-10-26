@@ -289,11 +289,10 @@ def main(
     new_file_name = f"{input_file}.parq"
     data.to_parquet(new_file_name)
 
-    plots = create_plots(new_file_name, data_types, output_path, minimal=minimal)
     cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
     _client = Client(cluster)  # noqa: F841 - Client instance needed to enable dask cluster
 
-    plots = create_plots(new_file_name, data_types, output_path)
+    plots = create_plots(new_file_name, data_types, output_path, minimal=minimal)
     dask.compute(*plots)
 
     # Export statistical summaries if requested
