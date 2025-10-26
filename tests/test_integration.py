@@ -251,11 +251,14 @@ class TestPlotLibraryFunction:
             ]
         )
 
-        # Minimal mode should have fewer plots (at least 1 less due to Pearson correlation)
+        # Minimal mode should have fewer plots
+        # (at least 1 less due to Pearson correlation)
         assert minimal_plots < normal_plots
 
     @pytest.mark.integration
-    def test_plot_minimal_mode_correlation(self, sample_mixed_data, mixed_dtypes, temp_dir):
+    def test_plot_minimal_mode_correlation(
+        self, sample_mixed_data, mixed_dtypes, temp_dir
+    ):
         """Test that minimal mode only creates Spearman correlation."""
         _, _ = plot(
             sample_mixed_data,

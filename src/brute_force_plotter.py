@@ -907,7 +907,9 @@ def create_plots(input_file, dtypes, output_path, use_dask=True, minimal=False):
     # Add summary plots
     logger.info("Adding correlation matrix and missing values plots...")
     if minimal:
-        plots.append(plot_correlation_matrix_minimal(input_file, dtypes, distributions_path))
+        plots.append(
+            plot_correlation_matrix_minimal(input_file, dtypes, distributions_path)
+        )
     else:
         plots.append(plot_correlation_matrix(input_file, dtypes, distributions_path))
     plots.append(plot_missing_values(input_file, dtypes, distributions_path))
