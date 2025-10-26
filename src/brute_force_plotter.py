@@ -44,10 +44,93 @@ sns.set_context("paper")
 sns.set(rc={"figure.figsize": (8, 6)})
 
 
+def infer_dtypes(data, max_categorical_ratio=0.05, max_categorical_unique=50):
+    """
+    Automatically infer data types for columns in a DataFrame.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        The data to infer types for
+    max_categorical_ratio : float, optional
+        Maximum ratio of unique values to total values for a column to be
+        considered categorical. Default is 0.05 (5%).
+    max_categorical_unique : int, optional
+        Maximum number of unique values for a column to be considered
+        categorical. Default is 50.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping column names to inferred data types:
+        - 'n' for numeric
+        - 'c' for category
+        - 'i' for ignore (e.g., unique identifiers, text fields)
+
+    Notes
+    -----
+    The inference logic:
+    - Numeric dtypes (int, float) with few unique values -> categorical
+    - Numeric dtypes with many unique values -> numeric
+    - Object/string dtypes with few unique values -> categorical
+    - Object/string dtypes with many unique values -> ignore
+    - Boolean dtypes -> categorical
+    - Datetime dtypes -> ignore (for now)
+    """
+    inferred_dtypes = {}
+
+    for col in data.columns:
+        dtype = data[col].dtype
+        n_unique = data[col].nunique()
+        n_total = len(data[col].dropna())
+        unique_ratio = n_unique / n_total if n_total > 0 else 0
+
+        # Boolean columns -> categorical
+        if dtype == "bool":
+            inferred_dtypes[col] = "c"
+
+        # Numeric columns (int, float)
+        elif pd.api.types.is_numeric_dtype(dtype):
+            # Check if it's likely an ID column (all unique or nearly all unique)
+            if unique_ratio > 0.95 and n_unique > max_categorical_unique:
+                inferred_dtypes[col] = "i"
+            # Check if it should be categorical
+            # Use AND for the conditions: both must be true
+            elif (
+                n_unique <= max_categorical_unique
+                and unique_ratio <= max_categorical_ratio
+            ):
+                inferred_dtypes[col] = "c"
+            else:
+                inferred_dtypes[col] = "n"
+
+        # Datetime columns -> ignore (for now, could be enhanced later)
+        elif pd.api.types.is_datetime64_any_dtype(dtype):
+            inferred_dtypes[col] = "i"
+
+        # Object/string columns
+        elif dtype == "object" or pd.api.types.is_string_dtype(dtype):
+            # Check if all values are unique (likely an ID or name column)
+            if unique_ratio > 0.95:
+                inferred_dtypes[col] = "i"
+            # Check if it has few unique values (categorical)
+            elif n_unique <= max_categorical_unique:
+                inferred_dtypes[col] = "c"
+            else:
+                # Too many unique text values -> ignore
+                inferred_dtypes[col] = "i"
+
+        # Other types -> ignore
+        else:
+            inferred_dtypes[col] = "i"
+
+    return inferred_dtypes
+
+
 @click.command()
 @click.argument("input_file")
-@click.argument("dtypes")
-@click.argument("output_path")
+@click.argument("dtypes", required=False)
+@click.argument("output_path", required=False)
 @click.option(
     "--skip-existing",
     is_flag=True,
@@ -71,6 +154,19 @@ sns.set(rc={"figure.figsize": (8, 6)})
     is_flag=True,
     default=False,
     help="Export statistical summary to CSV",
+)
+@click.option(
+    "--infer-dtypes",
+    "infer_types",  # Use a different parameter name
+    is_flag=True,
+    default=False,
+    help="Automatically infer data types from the data",
+)
+@click.option(
+    "--save-dtypes",
+    type=click.Path(),
+    default=None,
+    help="Save inferred or used dtypes to a JSON file",
 )
 @click.option(
     "--max-rows",
@@ -98,11 +194,21 @@ def main(
     theme,
     n_workers,
     export_stats,
+    infer_types,
+    save_dtypes,
     max_rows,
     sample_size,
     no_sample,
 ):
-    """Create Plots From data in input"""
+    """Create Plots From data in input
+
+    INPUT_FILE: Path to CSV file containing the data
+
+    DTYPES: (Optional) Path to JSON file with data types. If not provided,
+    data types will be automatically inferred.
+
+    OUTPUT_PATH: (Optional) Directory for output plots. Defaults to './output'
+    """
     # Set matplotlib backend for CLI (non-interactive)
     matplotlib.use("agg")
 
@@ -121,12 +227,40 @@ def main(
     # Apply theme
     sns.set_style(theme)
 
-    cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
-    _client = Client(cluster)  # noqa: F841 - Client instance needed to enable dask cluster
+    # Set default output path if not provided
+    if output_path is None:
+        output_path = "./output"
+        logger.info(f"No output path specified, using: {output_path}")
 
-    # Load dtypes JSON first to know which columns to ignore
-    with open(dtypes) as f:
-        data_types = json.load(f)
+    # Load or infer data types
+    if dtypes is None or infer_types:
+        logger.info("Inferring data types from the data...")
+        # Load the full dataset to infer types
+        data_full = pd.read_csv(input_file)
+        data_types = infer_dtypes(data_full)
+
+        # Log inferred types
+        logger.info("Inferred data types:")
+        for col, dtype in sorted(data_types.items()):
+            dtype_name = {"n": "numeric", "c": "categorical", "i": "ignore"}[dtype]
+            logger.info(f"  {col}: {dtype_name}")
+
+        # Save dtypes if requested
+        if save_dtypes:
+            with open(save_dtypes, "w") as f:
+                json.dump(data_types, f, indent=2)
+            logger.info(f"Saved inferred data types to: {save_dtypes}")
+    else:
+        # Load dtypes from JSON file
+        logger.info(f"Loading data types from: {dtypes}")
+        with open(dtypes) as f:
+            data_types = json.load(f)
+
+        # Save dtypes if requested (even when loaded from file)
+        if save_dtypes and save_dtypes != dtypes:
+            with open(save_dtypes, "w") as f:
+                json.dump(data_types, f, indent=2)
+            logger.info(f"Saved data types to: {save_dtypes}")
 
     # Filter out columns with dtype "i" (ignore)
     columns_to_load = [col for col, dtype in data_types.items() if dtype != "i"]
@@ -147,6 +281,9 @@ def main(
 
     new_file_name = f"{input_file}.parq"
     data.to_parquet(new_file_name)
+
+    cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
+    _client = Client(cluster)  # noqa: F841 - Client instance needed to enable dask cluster
 
     plots = create_plots(new_file_name, data_types, output_path)
     dask.compute(*plots)
@@ -170,7 +307,7 @@ def main(
 
 def plot(
     data,
-    dtypes,
+    dtypes=None,
     output_path=None,
     show=False,
     use_dask=False,
@@ -187,11 +324,12 @@ def plot(
     ----------
     data : pandas.DataFrame
         The data to plot
-    dtypes : dict
+    dtypes : dict, optional
         Dictionary mapping column names to data types:
         - 'n' for numeric
         - 'c' for category
         - 'i' for ignore
+        If None, data types will be automatically inferred.
     output_path : str, optional
         Path to save plots. If None and show=False, uses a temporary directory.
         Defaults to None.
@@ -213,8 +351,9 @@ def plot(
 
     Returns
     -------
-    str
-        Path where plots were saved (if saved)
+    tuple
+        A tuple of (output_path, dtypes) where output_path is the directory where
+        plots were saved and dtypes is the dictionary of data types used for plotting.
 
     Examples
     --------
@@ -222,10 +361,14 @@ def plot(
     >>> import brute_force_plotter as bfp
     >>>
     >>> data = pd.read_csv('data.csv')
-    >>> dtypes = {'age': 'n', 'gender': 'c', 'id': 'i'}
     >>>
-    >>> # Save plots to directory
-    >>> bfp.plot(data, dtypes, output_path='./plots')
+    >>> # Automatic type inference
+    >>> output_path, dtypes = bfp.plot(data)
+    >>> print(f"Inferred types: {dtypes}")
+    >>>
+    >>> # Manual type specification
+    >>> dtypes = {'age': 'n', 'gender': 'c', 'id': 'i'}
+    >>> output_path, dtypes_used = bfp.plot(data, dtypes, output_path='./plots')
     >>>
     >>> # Show plots interactively
     >>> bfp.plot(data, dtypes, show=True)
@@ -237,6 +380,17 @@ def plot(
     >>> bfp.plot(data, dtypes, output_path='./plots', max_rows=50000, sample_size=25000)
     """
     global _show_plots, _save_plots
+
+    # Infer dtypes if not provided
+    if dtypes is None:
+        logger.info("No dtypes provided, automatically inferring data types...")
+        dtypes = infer_dtypes(data)
+
+        # Log inferred types
+        logger.info("Inferred data types:")
+        for col, dtype in sorted(dtypes.items()):
+            dtype_name = {"n": "numeric", "c": "categorical", "i": "ignore"}[dtype]
+            logger.info(f"  {col}: {dtype_name}")
 
     # Set matplotlib backend based on show parameter
     if show:
@@ -322,7 +476,8 @@ def plot(
         if temp_parquet and os.path.exists(temp_parquet):
             os.remove(temp_parquet)
 
-    return output_path
+    # Always return both output_path and dtypes for consistency
+    return output_path, dtypes
 
 
 def check_and_sample_large_dataset(
