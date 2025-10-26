@@ -168,7 +168,7 @@ class TestPlotWithLargeDatasetFallback:
         }
 
         # Should not trigger sampling
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
@@ -202,7 +202,7 @@ class TestPlotWithLargeDatasetFallback:
             "category": "c",
         }
 
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
@@ -241,7 +241,7 @@ class TestPlotWithLargeDatasetFallback:
         }
 
         # Even though dataset is large, should not sample
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
@@ -273,7 +273,7 @@ class TestPlotWithLargeDatasetFallback:
             "value2": "n",
         }
 
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
@@ -309,7 +309,7 @@ class TestPlotWithLargeDatasetFallback:
             "category": "c",
         }
 
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
@@ -357,7 +357,7 @@ class TestPlotWithLargeDatasetFallback:
         dtypes = {"value": "n"}
 
         # Should not sample when exactly at threshold
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
@@ -382,7 +382,7 @@ class TestPlotWithLargeDatasetFallback:
         dtypes = {"value": "n"}
 
         # Should sample
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
