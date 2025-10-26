@@ -747,6 +747,7 @@ def plot_category_numeric_minimal_sync(input_file, category_col, numeric_col, pa
     box_violin_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
 
+@dask.delayed
 def plot_single_timeseries(input_file, time_col, path):
     """Plot a single time series column"""
     df = pd.read_parquet(input_file, columns=[time_col])
