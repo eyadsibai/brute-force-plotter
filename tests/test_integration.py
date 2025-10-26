@@ -17,7 +17,7 @@ class TestPlotLibraryFunction:
     @pytest.mark.integration
     def test_plot_with_output_path(self, sample_mixed_data, mixed_dtypes, temp_dir):
         """Test plotting with specified output path."""
-        output_path = plot(
+        output_path, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=temp_dir,
@@ -129,7 +129,7 @@ class TestPlotLibraryFunction:
     @pytest.mark.integration
     def test_plot_with_dask(self, sample_mixed_data, mixed_dtypes, temp_dir):
         """Test plotting with Dask enabled."""
-        output_path = plot(
+        output_path, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=temp_dir,
@@ -147,7 +147,7 @@ class TestPlotLibraryFunction:
     @pytest.mark.integration
     def test_plot_without_output_path(self, sample_mixed_data, mixed_dtypes):
         """Test plotting without specified output path (uses temp directory)."""
-        output_path = plot(
+        output_path, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=None,
@@ -219,7 +219,7 @@ class TestPlotLibraryFunction:
         if titanic_data is None:
             pytest.skip("Titanic data not available")
 
-        output_path = plot(
+        output_path, _ = plot(
             titanic_data,
             titanic_dtypes,
             output_path=temp_dir,
