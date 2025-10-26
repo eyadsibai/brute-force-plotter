@@ -20,7 +20,9 @@ import dask
 import folium
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+from scipy.interpolate import griddata
 import seaborn as sns
 
 logger = logging.getLogger(__name__)
@@ -33,16 +35,103 @@ skip_existing_plots = True  # Global flag for skipping existing plots
 _show_plots = False
 _save_plots = True
 
+# Large dataset configuration
+DEFAULT_MAX_ROWS = 100000  # Default threshold for sampling
+DEFAULT_SAMPLE_SIZE = 50000  # Default sample size for large datasets
+
 sns.set_style("darkgrid")
 sns.set_context("paper")
 
 sns.set(rc={"figure.figsize": (8, 6)})
 
 
+def infer_dtypes(data, max_categorical_ratio=0.05, max_categorical_unique=50):
+    """
+    Automatically infer data types for columns in a DataFrame.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        The data to infer types for
+    max_categorical_ratio : float, optional
+        Maximum ratio of unique values to total values for a column to be
+        considered categorical. Default is 0.05 (5%).
+    max_categorical_unique : int, optional
+        Maximum number of unique values for a column to be considered
+        categorical. Default is 50.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping column names to inferred data types:
+        - 'n' for numeric
+        - 'c' for category
+        - 'i' for ignore (e.g., unique identifiers, text fields)
+
+    Notes
+    -----
+    The inference logic:
+    - Numeric dtypes (int, float) with few unique values -> categorical
+    - Numeric dtypes with many unique values -> numeric
+    - Object/string dtypes with few unique values -> categorical
+    - Object/string dtypes with many unique values -> ignore
+    - Boolean dtypes -> categorical
+    - Datetime dtypes -> ignore (for now)
+    """
+    inferred_dtypes = {}
+
+    for col in data.columns:
+        dtype = data[col].dtype
+        n_unique = data[col].nunique()
+        n_total = len(data[col].dropna())
+        unique_ratio = n_unique / n_total if n_total > 0 else 0
+
+        # Boolean columns -> categorical
+        if dtype == "bool":
+            inferred_dtypes[col] = "c"
+
+        # Numeric columns (int, float)
+        elif pd.api.types.is_numeric_dtype(dtype):
+            # Check if it's likely an ID column (all unique or nearly all unique)
+            if unique_ratio > 0.95 and n_unique > max_categorical_unique:
+                inferred_dtypes[col] = "i"
+            # Check if it should be categorical
+            # Use AND for the conditions: both must be true
+            elif (
+                n_unique <= max_categorical_unique
+                and unique_ratio <= max_categorical_ratio
+            ):
+                inferred_dtypes[col] = "c"
+            else:
+                inferred_dtypes[col] = "n"
+
+        # Datetime columns -> ignore (for now, could be enhanced later)
+        elif pd.api.types.is_datetime64_any_dtype(dtype):
+            inferred_dtypes[col] = "i"
+
+        # Object/string columns
+        elif dtype == "object" or pd.api.types.is_string_dtype(dtype):
+            # Check if all values are unique (likely an ID or name column)
+            if unique_ratio > 0.95:
+                inferred_dtypes[col] = "i"
+            # Check if it has few unique values (categorical)
+            elif n_unique <= max_categorical_unique:
+                inferred_dtypes[col] = "c"
+            else:
+                # Too many unique text values -> ignore
+                inferred_dtypes[col] = "i"
+
+        # Other types -> ignore
+        else:
+            inferred_dtypes[col] = "i"
+
+    return inferred_dtypes
+
+
 @click.command()
 @click.argument("input_file")
-@click.argument("dtypes")
-@click.argument("output_path")
+@click.argument("dtypes", required=False)
+@click.argument("output_path", required=False)
 @click.option(
     "--skip-existing",
     is_flag=True,
@@ -67,10 +156,60 @@ sns.set(rc={"figure.figsize": (8, 6)})
     default=False,
     help="Export statistical summary to CSV",
 )
+@click.option(
+    "--infer-dtypes",
+    "infer_types",  # Use a different parameter name
+    is_flag=True,
+    default=False,
+    help="Automatically infer data types from the data",
+)
+@click.option(
+    "--save-dtypes",
+    type=click.Path(),
+    default=None,
+    help="Save inferred or used dtypes to a JSON file",
+)
+@click.option(
+    "--max-rows",
+    type=int,
+    default=DEFAULT_MAX_ROWS,
+    help="Maximum number of rows before sampling is applied",
+)
+@click.option(
+    "--sample-size",
+    type=int,
+    default=DEFAULT_SAMPLE_SIZE,
+    help="Number of rows to sample for large datasets",
+)
+@click.option(
+    "--no-sample",
+    is_flag=True,
+    default=False,
+    help="Disable sampling for large datasets (may cause memory issues)",
+)
 def main(
-    input_file, dtypes, output_path, skip_existing, theme, n_workers, export_stats
+    input_file,
+    dtypes,
+    output_path,
+    skip_existing,
+    theme,
+    n_workers,
+    export_stats,
+    infer_types,
+    save_dtypes,
+    max_rows,
+    sample_size,
+    no_sample,
 ):
-    """Create Plots From data in input"""
+    """Create Plots From data in input
+
+    INPUT_FILE: Path to CSV file containing the data
+
+    DTYPES: (Optional) Path to JSON file with data types. If not provided,
+    data types will be automatically inferred.
+
+    OUTPUT_PATH: (Optional) Directory for output plots. Defaults to './output'
+    """
     # Set matplotlib backend for CLI (non-interactive)
     matplotlib.use("agg")
 
@@ -89,37 +228,95 @@ def main(
     # Apply theme
     sns.set_style(theme)
 
-    cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
-    _client = Client(cluster)  # noqa: F841 - Client instance needed to enable dask cluster
+    # Set default output path if not provided
+    if output_path is None:
+        output_path = "./output"
+        logger.info(f"No output path specified, using: {output_path}")
 
-    # Load dtypes JSON first to know which columns to ignore
-    with open(dtypes) as f:
-        data_types = json.load(f)
+    # Load or infer data types
+    if dtypes is None or infer_types:
+        logger.info("Inferring data types from the data...")
+        # Load the full dataset to infer types
+        data_full = pd.read_csv(input_file)
+        data_types = infer_dtypes(data_full)
+
+        # Log inferred types
+        logger.info("Inferred data types:")
+        for col, dtype in sorted(data_types.items()):
+            dtype_name = {"n": "numeric", "c": "categorical", "i": "ignore"}[dtype]
+            logger.info(f"  {col}: {dtype_name}")
+
+        # Save dtypes if requested
+        if save_dtypes:
+            with open(save_dtypes, "w") as f:
+                json.dump(data_types, f, indent=2)
+            logger.info(f"Saved inferred data types to: {save_dtypes}")
+    else:
+        # Load dtypes from JSON file
+        logger.info(f"Loading data types from: {dtypes}")
+        with open(dtypes) as f:
+            data_types = json.load(f)
+
+        # Save dtypes if requested (even when loaded from file)
+        if save_dtypes and save_dtypes != dtypes:
+            with open(save_dtypes, "w") as f:
+                json.dump(data_types, f, indent=2)
+            logger.info(f"Saved data types to: {save_dtypes}")
 
     # Filter out columns with dtype "i" (ignore)
     columns_to_load = [col for col, dtype in data_types.items() if dtype != "i"]
 
     # Only load non-ignored columns from CSV
     data = pd.read_csv(input_file, usecols=columns_to_load)
+
+    # Check and sample large datasets if necessary
+    data, was_sampled = check_and_sample_large_dataset(
+        data, max_rows=max_rows, sample_size=sample_size, no_sample=no_sample
+    )
+
+    if was_sampled:
+        logger.info(
+            "Note: Plots are generated from sampled data. "
+            "Statistical summaries (--export-stats) will still use the full dataset."
+        )
+
     new_file_name = f"{input_file}.parq"
     data.to_parquet(new_file_name)
+
+    cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
+    _client = Client(cluster)  # noqa: F841 - Client instance needed to enable dask cluster
 
     plots = create_plots(new_file_name, data_types, output_path)
     dask.compute(*plots)
 
     # Export statistical summaries if requested
+    # Note: For stats, we reload the full dataset to ensure accuracy
     if export_stats:
-        export_statistical_summaries(new_file_name, data_types, output_path)
+        if was_sampled:
+            # Reload full dataset for statistics
+            logger.info("Loading full dataset for statistical summary export...")
+            full_data = pd.read_csv(input_file, usecols=columns_to_load)
+            full_parquet = f"{input_file}.full.parq"
+            full_data.to_parquet(full_parquet)
+            export_statistical_summaries(full_parquet, data_types, output_path)
+            # Clean up full dataset parquet
+            if os.path.exists(full_parquet):
+                os.remove(full_parquet)
+        else:
+            export_statistical_summaries(new_file_name, data_types, output_path)
 
 
 def plot(
     data,
-    dtypes,
+    dtypes=None,
     output_path=None,
     show=False,
     use_dask=False,
     n_workers=4,
     export_stats=False,
+    max_rows=DEFAULT_MAX_ROWS,
+    sample_size=DEFAULT_SAMPLE_SIZE,
+    no_sample=False,
 ):
     """
     Create plots from a pandas DataFrame.
@@ -128,12 +325,14 @@ def plot(
     ----------
     data : pandas.DataFrame
         The data to plot
-    dtypes : dict
+    dtypes : dict, optional
         Dictionary mapping column names to data types:
         - 'n' for numeric
         - 'c' for category
         - 'g' for geocoordinate (latitude/longitude)
+        - 't' for time series (datetime)
         - 'i' for ignore
+        If None, data types will be automatically inferred.
     output_path : str, optional
         Path to save plots. If None and show=False, uses a temporary directory.
         Defaults to None.
@@ -146,11 +345,18 @@ def plot(
         Number of workers for Dask (only used if use_dask=True). Defaults to 4.
     export_stats : bool, optional
         If True, export statistical summaries to CSV files. Defaults to False.
+    max_rows : int, optional
+        Maximum number of rows before sampling is applied. Defaults to 100,000.
+    sample_size : int, optional
+        Number of rows to sample for large datasets. Defaults to 50,000.
+    no_sample : bool, optional
+        If True, disable sampling for large datasets. Defaults to False.
 
     Returns
     -------
-    str
-        Path where plots were saved (if saved)
+    tuple
+        A tuple of (output_path, dtypes) where output_path is the directory where
+        plots were saved and dtypes is the dictionary of data types used for plotting.
 
     Examples
     --------
@@ -158,10 +364,14 @@ def plot(
     >>> import brute_force_plotter as bfp
     >>>
     >>> data = pd.read_csv('data.csv')
-    >>> dtypes = {'age': 'n', 'gender': 'c', 'id': 'i'}
     >>>
-    >>> # Save plots to directory
-    >>> bfp.plot(data, dtypes, output_path='./plots')
+    >>> # Automatic type inference
+    >>> output_path, dtypes = bfp.plot(data)
+    >>> print(f"Inferred types: {dtypes}")
+    >>>
+    >>> # Manual type specification
+    >>> dtypes = {'age': 'n', 'gender': 'c', 'id': 'i'}
+    >>> output_path, dtypes_used = bfp.plot(data, dtypes, output_path='./plots')
     >>>
     >>> # Show plots interactively
     >>> bfp.plot(data, dtypes, show=True)
@@ -173,8 +383,21 @@ def plot(
     >>> geo_data = pd.read_csv('cities.csv')
     >>> geo_dtypes = {'latitude': 'g', 'longitude': 'g', 'category': 'c'}
     >>> bfp.plot(geo_data, geo_dtypes, output_path='./maps')
+    >>> # Handle large datasets with sampling
+    >>> bfp.plot(data, dtypes, output_path='./plots', max_rows=50000, sample_size=25000)
     """
     global _show_plots, _save_plots
+
+    # Infer dtypes if not provided
+    if dtypes is None:
+        logger.info("No dtypes provided, automatically inferring data types...")
+        dtypes = infer_dtypes(data)
+
+        # Log inferred types
+        logger.info("Inferred data types:")
+        for col, dtype in sorted(dtypes.items()):
+            dtype_name = {"n": "numeric", "c": "categorical", "i": "ignore"}[dtype]
+            logger.info(f"  {col}: {dtype_name}")
 
     # Set matplotlib backend based on show parameter
     if show:
@@ -190,6 +413,18 @@ def plot(
 
     _show_plots = show
     _save_plots = not show or output_path is not None
+
+    # Check and sample large datasets if necessary
+    original_data = data
+    data, was_sampled = check_and_sample_large_dataset(
+        data, max_rows=max_rows, sample_size=sample_size, no_sample=no_sample
+    )
+
+    if was_sampled:
+        logger.info(
+            "Note: Plots are generated from sampled data. "
+            "Statistical summaries (if enabled) will use the full dataset."
+        )
 
     # Determine output path
     if output_path is None and not show:
@@ -226,14 +461,86 @@ def plot(
                     plot_task.compute()
 
         # Export statistical summaries if requested
+        # If data was sampled, use full dataset for accurate statistics
         if export_stats:
-            export_statistical_summaries(temp_parquet, dtypes, output_path)
+            if was_sampled:
+                logger.info("Using full dataset for statistical summary export...")
+                temp_full_parquet = None
+                try:
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".parq", delete=False
+                    ) as tmp:
+                        temp_full_parquet = tmp.name
+                    original_data.to_parquet(temp_full_parquet)
+                    export_statistical_summaries(temp_full_parquet, dtypes, output_path)
+                finally:
+                    if temp_full_parquet and os.path.exists(temp_full_parquet):
+                        os.remove(temp_full_parquet)
+            else:
+                export_statistical_summaries(temp_parquet, dtypes, output_path)
     finally:
         # Clean up temporary parquet file
         if temp_parquet and os.path.exists(temp_parquet):
             os.remove(temp_parquet)
 
-    return output_path
+    # Always return both output_path and dtypes for consistency
+    return output_path, dtypes
+
+
+def check_and_sample_large_dataset(
+    data, max_rows=DEFAULT_MAX_ROWS, sample_size=DEFAULT_SAMPLE_SIZE, no_sample=False
+):
+    """
+    Check if dataset is large and sample if necessary.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        The input data
+    max_rows : int
+        Maximum number of rows before sampling is applied
+    sample_size : int
+        Number of rows to sample for large datasets
+    no_sample : bool
+        If True, disable sampling even for large datasets
+
+    Returns
+    -------
+    pandas.DataFrame
+        Original or sampled DataFrame
+    bool
+        True if data was sampled, False otherwise
+    """
+    n_rows = len(data)
+
+    # Check if sampling is needed
+    if no_sample or n_rows <= max_rows:
+        return data, False
+
+    # Log warning about large dataset
+    logger.warning(
+        f"Dataset has {n_rows:,} rows, which exceeds the threshold of {max_rows:,} rows. "
+        f"Sampling {sample_size:,} rows for visualization to improve performance."
+    )
+    logger.info(
+        "To disable sampling, use --no-sample flag (may cause memory issues). "
+        "To adjust sample size, use --sample-size parameter."
+    )
+
+    # Calculate memory usage estimate
+    memory_mb = data.memory_usage(deep=True).sum() / 1024 / 1024
+    logger.info(f"Original dataset memory usage: {memory_mb:.2f} MB")
+
+    # Perform stratified sampling if possible, otherwise random sampling
+    sampled_data = data.sample(n=min(sample_size, n_rows), random_state=42)
+
+    # Log result
+    sampled_memory_mb = sampled_data.memory_usage(deep=True).sum() / 1024 / 1024
+    logger.info(
+        f"Sampled dataset: {len(sampled_data):,} rows, {sampled_memory_mb:.2f} MB"
+    )
+
+    return sampled_data, True
 
 
 def ignore_if_exist_or_save(func):
@@ -398,6 +705,236 @@ def plot_category_numeric_sync(input_file, category_col, numeric_col, path):
     bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
 
+# ============================================================================
+# 3-Variable Plotting Functions
+# ============================================================================
+
+
+@dask.delayed
+def plot_numeric_numeric_category(input_file, num_col1, num_col2, cat_col, path):
+    """Create 3D scatter plot with category as hue (2D scatter colored by category)"""
+    df = pd.read_parquet(input_file, columns=[num_col1, num_col2, cat_col])
+    file_name = os.path.join(path, f"{num_col1}-{num_col2}-{cat_col}-scatter-3d.png")
+    scatter_plot_with_hue(df, num_col1, num_col2, cat_col, file_name=file_name)
+
+
+def plot_numeric_numeric_category_sync(input_file, num_col1, num_col2, cat_col, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[num_col1, num_col2, cat_col])
+    file_name = os.path.join(path, f"{num_col1}-{num_col2}-{cat_col}-scatter-3d.png")
+    scatter_plot_with_hue(df, num_col1, num_col2, cat_col, file_name=file_name)
+
+
+@dask.delayed
+def plot_numeric_numeric_numeric(input_file, col1, col2, col3, path):
+    """Create 3D scatter plot and contour plots for 3 numeric variables"""
+    df = pd.read_parquet(input_file, columns=[col1, col2, col3])
+
+    # 3D scatter plot
+    file_name = os.path.join(path, f"{col1}-{col2}-{col3}-3d-scatter.png")
+    scatter_plot_3d(df, col1, col2, col3, file_name=file_name)
+
+    # Contour plots for each pair with third variable as color
+    file_name = os.path.join(path, f"{col1}-{col2}-contour-{col3}.png")
+    contour_plot(df, col1, col2, col3, file_name=file_name)
+
+
+def plot_numeric_numeric_numeric_sync(input_file, col1, col2, col3, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[col1, col2, col3])
+
+    # 3D scatter plot
+    file_name = os.path.join(path, f"{col1}-{col2}-{col3}-3d-scatter.png")
+    scatter_plot_3d(df, col1, col2, col3, file_name=file_name)
+
+    # Contour plots
+    file_name = os.path.join(path, f"{col1}-{col2}-contour-{col3}.png")
+    contour_plot(df, col1, col2, col3, file_name=file_name)
+
+
+@dask.delayed
+def plot_category_category_category(input_file, col1, col2, col3, path):
+    """Create multi-level heatmap for 3 categorical variables"""
+    df = pd.read_parquet(input_file, columns=[col1, col2, col3])
+
+    # Create heatmaps for each level of the third category
+    file_name = os.path.join(path, f"{col1}-{col2}-by-{col3}-heatmap.png")
+    multi_level_heatmap(df, col1, col2, col3, file_name=file_name)
+
+
+def plot_category_category_category_sync(input_file, col1, col2, col3, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[col1, col2, col3])
+    file_name = os.path.join(path, f"{col1}-{col2}-by-{col3}-heatmap.png")
+    multi_level_heatmap(df, col1, col2, col3, file_name=file_name)
+
+
+@dask.delayed
+def plot_numeric_category_category(input_file, num_col, cat_col1, cat_col2, path):
+    """Create grouped visualizations for numeric vs two categories"""
+    df = pd.read_parquet(input_file, columns=[num_col, cat_col1, cat_col2])
+    file_name = os.path.join(path, f"{num_col}-{cat_col1}-{cat_col2}-grouped.png")
+    grouped_bar_violin_plot(df, num_col, cat_col1, cat_col2, file_name=file_name)
+
+
+def plot_numeric_category_category_sync(input_file, num_col, cat_col1, cat_col2, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[num_col, cat_col1, cat_col2])
+    file_name = os.path.join(path, f"{num_col}-{cat_col1}-{cat_col2}-grouped.png")
+    grouped_bar_violin_plot(df, num_col, cat_col1, cat_col2, file_name=file_name)
+
+
+@dask.delayed
+def plot_single_timeseries(input_file, time_col, path):
+    """Plot a single time series column"""
+    df = pd.read_parquet(input_file, columns=[time_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-timeseries-plot.png")
+    time_series_line_plot(df, time_col, file_name=file_name)
+
+
+def plot_single_timeseries_sync(input_file, time_col, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[time_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-timeseries-plot.png")
+    time_series_line_plot(df, time_col, file_name=file_name)
+
+
+@dask.delayed
+def plot_timeseries_numeric(input_file, time_col, numeric_col, path):
+    """Plot numeric values over time"""
+    df = pd.read_parquet(input_file, columns=[time_col, numeric_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-{numeric_col}-timeseries-plot.png")
+    time_series_numeric_plot(df, time_col, numeric_col, file_name=file_name)
+
+
+def plot_timeseries_numeric_sync(input_file, time_col, numeric_col, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[time_col, numeric_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(path, f"{time_col}-{numeric_col}-timeseries-plot.png")
+    time_series_numeric_plot(df, time_col, numeric_col, file_name=file_name)
+
+
+@dask.delayed
+def plot_timeseries_timeseries(input_file, time_col1, time_col2, path):
+    """
+    Plot two datetime series showing their temporal coverage and overlap.
+    Creates a timeline visualization showing when each time series has data.
+    """
+    df = pd.read_parquet(input_file, columns=[time_col1, time_col2])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col1]):
+        df[time_col1] = pd.to_datetime(df[time_col1])
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col2]):
+        df[time_col2] = pd.to_datetime(df[time_col2])
+
+    # Create a temporal coverage comparison plot
+    file_name = os.path.join(path, f"{time_col1}-{time_col2}-timeseries-comparison.png")
+
+    # Create figure with two subplots showing both timelines
+    _, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+    # Plot first time series
+    ax1.plot(df[time_col1], range(len(df)), linewidth=1.5, marker="o", markersize=2)
+    ax1.set_ylabel("Observation Index")
+    ax1.set_title(f"Timeline: {time_col1}")
+    ax1.grid(True, alpha=0.3)
+
+    # Plot second time series
+    ax2.plot(df[time_col2], range(len(df)), linewidth=1.5, marker="o", markersize=2)
+    ax2.set_xlabel("Time")
+    ax2.set_ylabel("Observation Index")
+    ax2.set_title(f"Timeline: {time_col2}")
+    ax2.grid(True, alpha=0.3)
+
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    if file_name:
+        plt.savefig(file_name, dpi=120)
+    plt.close("all")
+
+
+def plot_timeseries_timeseries_sync(input_file, time_col1, time_col2, path):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[time_col1, time_col2])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col1]):
+        df[time_col1] = pd.to_datetime(df[time_col1])
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col2]):
+        df[time_col2] = pd.to_datetime(df[time_col2])
+
+    # Create a temporal coverage comparison plot
+    file_name = os.path.join(path, f"{time_col1}-{time_col2}-timeseries-comparison.png")
+
+    # Create figure with two subplots showing both timelines
+    _, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+    # Plot first time series
+    ax1.plot(df[time_col1], range(len(df)), linewidth=1.5, marker="o", markersize=2)
+    ax1.set_ylabel("Observation Index")
+    ax1.set_title(f"Timeline: {time_col1}")
+    ax1.grid(True, alpha=0.3)
+
+    # Plot second time series
+    ax2.plot(df[time_col2], range(len(df)), linewidth=1.5, marker="o", markersize=2)
+    ax2.set_xlabel("Time")
+    ax2.set_ylabel("Observation Index")
+    ax2.set_title(f"Timeline: {time_col2}")
+    ax2.grid(True, alpha=0.3)
+
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    if file_name:
+        plt.savefig(file_name, dpi=120)
+    plt.close("all")
+
+
+@dask.delayed
+def plot_timeseries_category_numeric(
+    input_file, time_col, category_col, numeric_col, path
+):
+    """Plot numeric values over time grouped by category"""
+    df = pd.read_parquet(input_file, columns=[time_col, category_col, numeric_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(
+        path, f"{time_col}-{numeric_col}-by-{category_col}-timeseries.png"
+    )
+    time_series_category_plot(
+        df, time_col, numeric_col, category_col, file_name=file_name
+    )
+
+
+def plot_timeseries_category_numeric_sync(
+    input_file, time_col, category_col, numeric_col, path
+):
+    """Non-delayed version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[time_col, category_col, numeric_col])
+    # Convert to datetime if not already
+    if not pd.api.types.is_datetime64_any_dtype(df[time_col]):
+        df[time_col] = pd.to_datetime(df[time_col])
+    file_name = os.path.join(
+        path, f"{time_col}-{numeric_col}-by-{category_col}-timeseries.png"
+    )
+    time_series_category_plot(
+        df, time_col, numeric_col, category_col, file_name=file_name
+    )
+
+
 def create_plots(input_file, dtypes, output_path, use_dask=True):
     distributions_path, two_d_interactions_path, three_d_interactions_path = (
         _create_directories(output_path)
@@ -423,6 +960,13 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
                 plots.append(plot_single_category(input_file, col, distributions_path))
             else:
                 plot_single_category_sync(input_file, col, distributions_path)
+        if dtype == "t":
+            if use_dask:
+                plots.append(
+                    plot_single_timeseries(input_file, col, distributions_path)
+                )
+            else:
+                plot_single_timeseries_sync(input_file, col, distributions_path)
 
     for (col1, dtype1), (col2, dtype2) in combinations(dtypes.items(), 2):
         print(col1, col2)
@@ -473,6 +1017,204 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
             else:
                 plot_category_numeric_sync(
                     input_file, col2, col1, two_d_interactions_path
+                )
+        # Time series interactions
+        if dtype1 == "t" and dtype2 == "n":
+            if use_dask:
+                plots.append(
+                    plot_timeseries_numeric(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
+                )
+            else:
+                plot_timeseries_numeric_sync(
+                    input_file, col1, col2, two_d_interactions_path
+                )
+        if dtype1 == "n" and dtype2 == "t":
+            if use_dask:
+                plots.append(
+                    plot_timeseries_numeric(
+                        input_file, col2, col1, two_d_interactions_path
+                    )
+                )
+            else:
+                plot_timeseries_numeric_sync(
+                    input_file, col2, col1, two_d_interactions_path
+                )
+        if dtype1 == dtype2 == "t":
+            if use_dask:
+                plots.append(
+                    plot_timeseries_timeseries(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
+                )
+            else:
+                plot_timeseries_timeseries_sync(
+                    input_file, col1, col2, two_d_interactions_path
+                )
+
+    # 3-variable interactions
+    logger.info("Adding 3-variable interaction plots...")
+    # 3-variable interactions
+    logger.info("Adding 3-variable interaction plots...")
+    for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
+        dtypes.items(), 3
+    ):
+        if dtype1 == "i" or dtype2 == "i" or dtype3 == "i":
+            continue
+        if any(col in ignore for col in [col1, col2, col3]):
+            continue
+
+        # All numeric: 3D scatter and contour plots
+        if dtype1 == "n" and dtype2 == "n" and dtype3 == "n":
+            if use_dask:
+                plots.append(
+                    plot_numeric_numeric_numeric(
+                        input_file, col1, col2, col3, three_d_interactions_path
+                    )
+                )
+            else:
+                plot_numeric_numeric_numeric_sync(
+                    input_file, col1, col2, col3, three_d_interactions_path
+                )
+
+        # All categorical: multi-level heatmap
+        elif dtype1 == "c" and dtype2 == "c" and dtype3 == "c":
+            if use_dask:
+                plots.append(
+                    plot_category_category_category(
+                        input_file, col1, col2, col3, three_d_interactions_path
+                    )
+                )
+            else:
+                plot_category_category_category_sync(
+                    input_file, col1, col2, col3, three_d_interactions_path
+                )
+
+        # Two numeric, one categorical: colored scatter
+        elif dtype1 == "n" and dtype2 == "n" and dtype3 == "c":
+            if use_dask:
+                plots.append(
+                    plot_numeric_numeric_category(
+                        input_file, col1, col2, col3, three_d_interactions_path
+                    )
+                )
+            else:
+                plot_numeric_numeric_category_sync(
+                    input_file, col1, col2, col3, three_d_interactions_path
+                )
+        elif dtype1 == "n" and dtype2 == "c" and dtype3 == "n":
+            if use_dask:
+                plots.append(
+                    plot_numeric_numeric_category(
+                        input_file, col1, col3, col2, three_d_interactions_path
+                    )
+                )
+            else:
+                plot_numeric_numeric_category_sync(
+                    input_file, col1, col3, col2, three_d_interactions_path
+                )
+        elif dtype1 == "c" and dtype2 == "n" and dtype3 == "n":
+            if use_dask:
+                plots.append(
+                    plot_numeric_numeric_category(
+                        input_file, col2, col3, col1, three_d_interactions_path
+                    )
+                )
+            else:
+                plot_numeric_numeric_category_sync(
+                    input_file, col2, col3, col1, three_d_interactions_path
+                )
+
+        # One numeric, two categorical: grouped visualizations
+        elif dtype1 == "n" and dtype2 == "c" and dtype3 == "c":
+            if use_dask:
+                plots.append(
+                    plot_numeric_category_category(
+                        input_file, col1, col2, col3, three_d_interactions_path
+                    )
+                )
+            else:
+                plot_numeric_category_category_sync(
+                    input_file, col1, col2, col3, three_d_interactions_path
+                )
+        elif dtype1 == "c" and dtype2 == "n" and dtype3 == "c":
+            if use_dask:
+                plots.append(
+                    plot_numeric_category_category(
+                        input_file, col2, col1, col3, three_d_interactions_path
+                    )
+                )
+            else:
+                plot_numeric_category_category_sync(
+                    input_file, col2, col1, col3, three_d_interactions_path
+                )
+        elif dtype1 == "c" and dtype2 == "c" and dtype3 == "n":
+            if use_dask:
+                plots.append(
+                    plot_numeric_category_category(
+                        input_file, col3, col1, col2, three_d_interactions_path
+                    )
+                )
+            else:
+                plot_numeric_category_category_sync(
+                    input_file, col3, col1, col2, three_d_interactions_path
+                )
+
+    # 3-way interactions: time series + category + numeric
+    for (col1, dtype1), (col2, dtype2), (col3, dtype3) in combinations(
+        dtypes.items(), 3
+    ):
+        if dtype1 == "i" or dtype2 == "i" or dtype3 == "i":
+            continue
+        if any(col in ignore for col in [col1, col2, col3]):
+            continue
+
+        # Find time, category, and numeric columns
+        time_col = None
+        category_col = None
+        numeric_col = None
+
+        if dtype1 == "t":
+            time_col = col1
+        elif dtype2 == "t":
+            time_col = col2
+        elif dtype3 == "t":
+            time_col = col3
+
+        if dtype1 == "c":
+            category_col = col1
+        elif dtype2 == "c":
+            category_col = col2
+        elif dtype3 == "c":
+            category_col = col3
+
+        if dtype1 == "n":
+            numeric_col = col1
+        elif dtype2 == "n":
+            numeric_col = col2
+        elif dtype3 == "n":
+            numeric_col = col3
+
+        # Plot if we have time + category + numeric
+        if time_col and category_col and numeric_col:
+            if use_dask:
+                plots.append(
+                    plot_timeseries_category_numeric(
+                        input_file,
+                        time_col,
+                        category_col,
+                        numeric_col,
+                        two_d_interactions_path,
+                    )
+                )
+            else:
+                plot_timeseries_category_numeric_sync(
+                    input_file,
+                    time_col,
+                    category_col,
+                    numeric_col,
+                    two_d_interactions_path,
                 )
 
     # Generate map visualizations for geocoordinate pairs
@@ -665,6 +1407,311 @@ def missing_plot(data, file_name=None):
     plt.xlabel("Columns")
     plt.ylabel("Rows")
     sns.despine(left=True)
+
+
+# ============================================================================
+# 3-Variable Plotting Helper Functions
+# ============================================================================
+
+
+@ignore_if_exist_or_save
+def scatter_plot_with_hue(data, col1, col2, hue_col, file_name=None):
+    """Create 2D scatter plot with category as hue/color"""
+    plt.figure(figsize=(10, 8))
+
+    # Remove rows with NaN in any of the columns
+    clean_data = data[[col1, col2, hue_col]].dropna()
+
+    if len(clean_data) == 0:
+        logger.warning(
+            f"No valid data points for scatter plot: {col1}, {col2}, {hue_col}"
+        )
+        plt.text(
+            0.5,
+            0.5,
+            "No valid data points",
+            ha="center",
+            va="center",
+            transform=plt.gca().transAxes,
+        )
+        plt.title(f"{col1} vs {col2} by {hue_col}")
+    else:
+        sns.scatterplot(
+            x=col1,
+            y=col2,
+            hue=hue_col,
+            data=clean_data,
+            palette="deep",
+            s=100,
+            alpha=0.7,
+        )
+        plt.title(f"{col1} vs {col2} by {hue_col}")
+        # Only add legend if there are artists with labels
+        if plt.gca().get_legend_handles_labels()[0]:
+            plt.legend(title=hue_col, bbox_to_anchor=(1.05, 1), loc="upper left")
+
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def scatter_plot_3d(data, col1, col2, col3, file_name=None):
+    """Create 3D scatter plot for three numeric variables"""
+    # Import Axes3D for its side effect: registers the '3d' projection for matplotlib.
+    # This is required for 'projection="3d"' to work below.
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection="3d")
+
+    # Remove NaN values
+    clean_data = data[[col1, col2, col3]].dropna()
+
+    scatter = ax.scatter(
+        clean_data[col1],
+        clean_data[col2],
+        clean_data[col3],
+        c=clean_data[col3],
+        cmap="viridis",
+        s=50,
+        alpha=0.6,
+        edgecolors="w",
+        linewidth=0.5,
+    )
+
+    ax.set_xlabel(col1)
+    ax.set_ylabel(col2)
+    ax.set_zlabel(col3)
+    ax.set_title(f"3D Scatter: {col1}, {col2}, {col3}")
+
+    plt.colorbar(scatter, ax=ax, label=col3, shrink=0.5)
+
+
+@ignore_if_exist_or_save
+def contour_plot(data, col1, col2, col3, file_name=None):
+    """Create contour plot showing relationship between 3 numeric variables"""
+    # Remove NaN values
+    clean_data = data[[col1, col2, col3]].dropna()
+
+    if len(clean_data) < 4:
+        logger.warning(
+            f"Not enough data points for contour plot: {col1}, {col2}, {col3}"
+        )
+        return
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Create grid
+    x = clean_data[col1].values
+    y = clean_data[col2].values
+    z = clean_data[col3].values
+
+    # Create grid for interpolation
+    xi = np.linspace(x.min(), x.max(), 100)
+    yi = np.linspace(y.min(), y.max(), 100)
+    xi_grid, yi_grid = np.meshgrid(xi, yi)
+
+    # Interpolate z values on grid
+    try:
+        zi = griddata((x, y), z, (xi_grid, yi_grid), method="cubic")
+
+        # Create contour plot
+        contour = ax.contourf(
+            xi_grid, yi_grid, zi, levels=15, cmap="viridis", alpha=0.7
+        )
+        ax.contour(
+            xi_grid, yi_grid, zi, levels=15, colors="black", alpha=0.3, linewidths=0.5
+        )
+
+        # Add scatter points
+        ax.scatter(
+            x,
+            y,
+            c=z,
+            cmap="viridis",
+            s=20,
+            edgecolors="black",
+            linewidth=0.5,
+            alpha=0.8,
+        )
+
+        plt.colorbar(contour, ax=ax, label=col3)
+        ax.set_xlabel(col1)
+        ax.set_ylabel(col2)
+        ax.set_title(f"Contour Plot: {col1} vs {col2} (colored by {col3})")
+        sns.despine(left=True)
+    except Exception as e:
+        logger.warning(f"Could not create contour plot for {col1}, {col2}, {col3}: {e}")
+        # Fallback to simple scatter plot
+        ax.scatter(x, y, c=z, cmap="viridis", s=50, alpha=0.6)
+        plt.colorbar(ax.collections[0], ax=ax, label=col3)
+        ax.set_xlabel(col1)
+        ax.set_ylabel(col2)
+        ax.set_title(f"Scatter Plot: {col1} vs {col2} (colored by {col3})")
+        sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def multi_level_heatmap(data, col1, col2, col3, file_name=None):
+    """Create faceted heatmaps for 3 categorical variables"""
+    # Get unique values of the third category
+    unique_vals = sorted(data[col3].dropna().unique())
+
+    if len(unique_vals) > 10:
+        logger.warning(
+            f"Too many categories in {col3} ({len(unique_vals)}), limiting to first 10"
+        )
+        unique_vals = unique_vals[:10]
+
+    # Calculate grid dimensions
+    n_plots = len(unique_vals)
+    n_cols = min(3, n_plots)
+    n_rows = (n_plots + n_cols - 1) // n_cols
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows))
+    axes = [axes] if n_plots == 1 else axes.flatten() if n_plots > 1 else [axes]
+
+    for idx, val in enumerate(unique_vals):
+        ax = axes[idx]
+        subset = data[data[col3] == val]
+
+        # Create crosstab for heatmap
+        ct = pd.crosstab(subset[col1], subset[col2])
+
+        if ct.size > 0:
+            sns.heatmap(ct, annot=True, fmt="d", cmap="YlOrRd", ax=ax, cbar=True)
+            ax.set_title(f"{col3} = {val}")
+        else:
+            ax.text(
+                0.5,
+                0.5,
+                f"No data for {col3}={val}",
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+            )
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+    # Hide extra subplots
+    for idx in range(n_plots, len(axes)):
+        axes[idx].set_visible(False)
+
+    plt.suptitle(f"{col1} vs {col2} by {col3}", fontsize=16, y=1.00)
+    plt.tight_layout()
+
+
+@ignore_if_exist_or_save
+def grouped_bar_violin_plot(data, num_col, cat_col1, cat_col2, file_name=None):
+    """Create grouped bar and violin plots for numeric vs two categories"""
+    # Get unique values
+    unique_cat2 = sorted(data[cat_col2].dropna().unique())
+
+    if len(unique_cat2) > 10:
+        logger.warning(
+            f"Too many categories in {cat_col2} ({len(unique_cat2)}), limiting to first 10"
+        )
+        unique_cat2 = unique_cat2[:10]
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+    # Grouped bar plot
+    ax1 = axes[0]
+    sns.barplot(x=cat_col1, y=num_col, hue=cat_col2, data=data, ax=ax1)
+    ax1.set_title(f"Mean {num_col} by {cat_col1} and {cat_col2}")
+    ax1.legend(title=cat_col2, bbox_to_anchor=(1.05, 1), loc="upper left")
+
+    # Grouped violin plot
+    ax2 = axes[1]
+    sns.violinplot(
+        x=cat_col1,
+        y=num_col,
+        hue=cat_col2,
+        data=data,
+        ax=ax2,
+        split=False,
+        inner="quartile",
+    )
+    ax2.set_title(f"Distribution of {num_col} by {cat_col1} and {cat_col2}")
+    ax2.legend(title=cat_col2, bbox_to_anchor=(1.05, 1), loc="upper left")
+
+    plt.tight_layout()
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def time_series_line_plot(data, time_col, file_name=None):
+    """Create a timeline plot showing the distribution of datetime values"""
+    plt.figure(figsize=(12, 6))
+    # Plot datetime index as a timeline
+    plt.plot(data[time_col], range(len(data)), linewidth=1.5)
+    plt.xlabel("Time")
+    plt.ylabel("Observation Index")
+    plt.title(f"Timeline: {time_col}")
+    plt.xticks(rotation=45)
+    plt.grid(True, alpha=0.3)
+    sns.despine()
+
+
+@ignore_if_exist_or_save
+def time_series_numeric_plot(data, time_col, numeric_col, file_name=None):
+    """Create a time series plot with numeric values on y-axis"""
+    plt.figure(figsize=(12, 6))
+    plt.plot(data[time_col], data[numeric_col], linewidth=1.5, marker="o", markersize=2)
+    plt.xlabel(time_col)
+    plt.ylabel(numeric_col)
+    plt.title(f"{numeric_col} over {time_col}")
+    plt.xticks(rotation=45)
+    plt.grid(True, alpha=0.3)
+    sns.despine()
+
+
+@ignore_if_exist_or_save
+def time_series_category_plot(
+    data, time_col, numeric_col, category_col, file_name=None
+):
+    """Create a time series plot grouped by category"""
+    plt.figure(figsize=(12, 6))
+    for category in data[category_col].unique():
+        subset = data[data[category_col] == category]
+        plt.plot(
+            subset[time_col],
+            subset[numeric_col],
+            linewidth=1.5,
+            marker="o",
+            markersize=2,
+            label=category,
+            alpha=0.7,
+        )
+    plt.xlabel(time_col)
+    plt.ylabel(numeric_col)
+    plt.title(f"{numeric_col} over {time_col} by {category_col}")
+    plt.xticks(rotation=45)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    sns.despine()
+
+
+@ignore_if_exist_or_save
+def multiple_time_series_plot(data, time_col, numeric_cols, file_name=None):
+    """Create an overlay plot for multiple time series"""
+    plt.figure(figsize=(12, 6))
+    for col in numeric_cols:
+        plt.plot(
+            data[time_col],
+            data[col],
+            linewidth=1.5,
+            marker="o",
+            markersize=2,
+            label=col,
+            alpha=0.7,
+        )
+    plt.xlabel(time_col)
+    plt.ylabel("Value")
+    plt.title(f"Multiple Time Series over {time_col}")
+    plt.xticks(rotation=45)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    sns.despine()
 
 
 @dask.delayed

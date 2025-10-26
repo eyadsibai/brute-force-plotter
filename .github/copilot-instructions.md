@@ -6,12 +6,12 @@ Brute Force Plotter is a Python tool designed to visualize data quickly with min
 
 ## Language and Dependencies
 
-- **Python Version**: Python 3 (tested on Python 3 only)
+- **Python Version**: Python 3.10+ (tested on Python 3.10, 3.11, and 3.12)
 - **Key Dependencies**:
-  - matplotlib (3.10.0) - for plotting
+  - matplotlib (3.10.7) - for plotting
   - pandas (2.3.3) - for data manipulation
   - seaborn (0.13.2) - for statistical visualizations
-  - dask (2024.4.1) - for parallel processing
+  - dask (2025.10.0) - for parallel processing
   - click (8.3.0) - for CLI interface
   - pyarrow (22.0.0) - for parquet file handling
 
@@ -24,7 +24,8 @@ Brute Force Plotter is a Python tool designed to visualize data quickly with min
   - `titanic.csv` - Sample CSV data
   - `titanic_dtypes.json` - Data type definitions
   - `output/` - Generated plots directory
-- `requirements.txt` - Python dependencies
+- `pyproject.toml` - Python project configuration and dependencies
+- `uv.lock` - Locked dependency versions for reproducibility
 - `README.md` - Documentation in Markdown format
 
 ## Running the Tool
@@ -45,13 +46,13 @@ python3 -m src <input_file.csv> <dtypes.json> <output_directory>
 
 ### Example:
 ```bash
-python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
+uv run python3 -m src example/titanic.csv example/titanic_dtypes.json example/output
 ```
 
 ## Installation
 
 ```bash
-pip3 install -r requirements.txt
+uv sync
 ```
 
 ## Code Style and Conventions
@@ -97,12 +98,31 @@ Generated plots are organized in subdirectories:
 
 ## Testing
 
-Currently, the project does not have a formal test suite (see TODO in README).
+The project includes a comprehensive test suite with 81+ tests covering:
+- Unit tests for core plotting functions
+- Integration tests for CLI and library interfaces
+- Edge case tests (empty data, missing values, unicode, etc.)
+- Large dataset handling tests
+
+**Running Tests:**
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test categories
+pytest -m unit          # Unit tests only
+pytest -m integration   # Integration tests only
+pytest -m edge_case     # Edge case tests only
+```
+
+**Test Coverage:** ~96% code coverage across the codebase.
 
 ## Known Limitations and TODOs
 
 - No support for target variable highlighting
-- No tests
 - Categorical columns with >50 unique values are ignored
 - 3D visualizations are not implemented
 - No automatic data type inference
@@ -118,3 +138,44 @@ When modifying this codebase:
 - Test with the example titanic dataset
 - Update README.md for user-facing changes
 - Consider matplotlib/seaborn version compatibility
+
+## Code Quality and Linting
+
+**IMPORTANT: Always run ruff before creating a PR to ensure tests pass in CI.**
+
+This project uses [Ruff](https://github.com/astral-sh/ruff) for linting and formatting:
+
+```bash
+# Check for linting issues
+ruff check .
+
+# Auto-fix linting issues
+ruff check --fix .
+
+# Format code
+ruff format .
+```
+
+**Pre-commit Hooks:**
+The project uses pre-commit hooks to automatically enforce code quality on every commit:
+
+```bash
+# Install pre-commit hooks
+pre-commit install
+
+# Run all hooks manually
+pre-commit run --all-files
+```
+
+**Before Making a PR:**
+1. Run `ruff check --fix .` to fix any linting issues
+2. Run `ruff format .` to format code
+3. Run `pytest` to ensure all tests pass
+4. Review your changes carefully
+
+The CI pipeline runs these checks automatically:
+- Ruff linting (`ruff check .`)
+- Ruff formatting (`ruff format --check .`)
+- Pytest tests
+
+**Note:** PRs that fail linting or formatting checks will not be merged. Always run ruff locally before pushing.

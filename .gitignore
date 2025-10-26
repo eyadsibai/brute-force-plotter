@@ -74,3 +74,4 @@ target/
 example/output*/
 example/simple_output/
 example/*_output/
+output/

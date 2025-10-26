@@ -17,7 +17,7 @@ class TestPlotLibraryFunction:
     @pytest.mark.integration
     def test_plot_with_output_path(self, sample_mixed_data, mixed_dtypes, temp_dir):
         """Test plotting with specified output path."""
-        output_path = plot(
+        output_path, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=temp_dir,
@@ -129,7 +129,7 @@ class TestPlotLibraryFunction:
     @pytest.mark.integration
     def test_plot_with_dask(self, sample_mixed_data, mixed_dtypes, temp_dir):
         """Test plotting with Dask enabled."""
-        output_path = plot(
+        output_path, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=temp_dir,
@@ -147,7 +147,7 @@ class TestPlotLibraryFunction:
     @pytest.mark.integration
     def test_plot_without_output_path(self, sample_mixed_data, mixed_dtypes):
         """Test plotting without specified output path (uses temp directory)."""
-        output_path = plot(
+        output_path, _ = plot(
             sample_mixed_data,
             mixed_dtypes,
             output_path=None,
@@ -219,7 +219,7 @@ class TestPlotLibraryFunction:
         if titanic_data is None:
             pytest.skip("Titanic data not available")
 
-        output_path = plot(
+        output_path, _ = plot(
             titanic_data,
             titanic_dtypes,
             output_path=temp_dir,
@@ -239,6 +239,68 @@ class TestPlotLibraryFunction:
         dist_dir = os.path.join(temp_dir, "distributions")
         assert os.path.exists(os.path.join(dist_dir, "Age-dist-plot.png"))
         assert os.path.exists(os.path.join(dist_dir, "Survived-bar-plot.png"))
+
+    @pytest.mark.integration
+    def test_plot_with_timeseries_data(self, temp_dir):
+        """Test plotting with time series data."""
+        import pandas as pd
+
+        # Create time series data
+        dates = pd.date_range(start="2023-01-01", periods=50, freq="D")
+        data = pd.DataFrame(
+            {
+                "date": dates,
+                "value": range(50),
+                "category": ["A", "B"] * 25,
+            }
+        )
+
+        dtypes = {"date": "t", "value": "n", "category": "c"}
+
+        plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
+
+        # Check that time series plots were created
+        dist_dir = os.path.join(temp_dir, "distributions")
+        interactions_dir = os.path.join(temp_dir, "2d_interactions")
+
+        # Single time series plot
+        assert os.path.exists(os.path.join(dist_dir, "date-timeseries-plot.png"))
+
+        # Time series vs numeric plot
+        assert os.path.exists(
+            os.path.join(interactions_dir, "date-value-timeseries-plot.png")
+        )
+
+        # Time series grouped by category
+        assert os.path.exists(
+            os.path.join(interactions_dir, "date-value-by-category-timeseries.png")
+        )
+
+    @pytest.mark.integration
+    def test_plot_with_multiple_timeseries(self, temp_dir):
+        """Test plotting with multiple time series columns."""
+        import pandas as pd
+
+        # Create multiple time series
+        dates1 = pd.date_range(start="2023-01-01", periods=30, freq="D")
+        dates2 = pd.date_range(start="2023-02-01", periods=30, freq="D")
+        data = pd.DataFrame(
+            {
+                "date1": dates1,
+                "date2": dates2,
+                "value": range(30),
+            }
+        )
+
+        dtypes = {"date1": "t", "date2": "t", "value": "n"}
+
+        plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
+
+        # Check that time series comparison plot was created
+        interactions_dir = os.path.join(temp_dir, "2d_interactions")
+        assert os.path.exists(
+            os.path.join(interactions_dir, "date1-date2-timeseries-comparison.png")
+        )
 
 
 class TestCreatePlotsFunction:
