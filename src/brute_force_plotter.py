@@ -158,6 +158,8 @@ def infer_dtypes(data, max_categorical_ratio=0.05, max_categorical_unique=50):
     is_flag=True,
     default=False,
     help="Generate minimal set of plots (reduces redundant visualizations)",
+)
+@click.option(
     "--infer-dtypes",
     "infer_types",  # Use a different parameter name
     is_flag=True,
@@ -745,7 +747,6 @@ def plot_category_numeric_minimal_sync(input_file, category_col, numeric_col, pa
     box_violin_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
 
-def create_plots(input_file, dtypes, output_path, use_dask=True, minimal=False):
 def plot_single_timeseries(input_file, time_col, path):
     """Plot a single time series column"""
     df = pd.read_parquet(input_file, columns=[time_col])
@@ -896,7 +897,7 @@ def plot_timeseries_category_numeric_sync(
     )
 
 
-def create_plots(input_file, dtypes, output_path, use_dask=True):
+def create_plots(input_file, dtypes, output_path, use_dask=True, minimal=False):
     distributions_path, two_d_interactions_path, three_d_interactions_path = (
         _create_directories(output_path)
     )
