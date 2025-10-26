@@ -23,7 +23,7 @@ class TestEmptyDataFrames:
 
         # Should not crash
         try:
-            output_path = plot(
+            output_path, _ = plot(
                 sample_empty_data,
                 dtypes,
                 output_path=temp_dir,
@@ -44,7 +44,7 @@ class TestEmptyDataFrames:
             "education": "i",
         }
 
-        output_path = plot(
+        output_path, _ = plot(
             sample_mixed_data,
             dtypes,
             output_path=temp_dir,
@@ -155,7 +155,7 @@ class TestAllMissingValues:
 
         # Should not crash
         try:
-            output_path = plot(
+            output_path, _ = plot(
                 data,
                 dtypes,
                 output_path=temp_dir,
@@ -177,7 +177,7 @@ class TestVariousDataTypeCombinations:
         self, sample_numeric_data, simple_dtypes, temp_dir
     ):
         """Test plotting with only numeric columns."""
-        output_path = plot(
+        output_path, _ = plot(
             sample_numeric_data,
             simple_dtypes,
             output_path=temp_dir,
@@ -206,7 +206,7 @@ class TestVariousDataTypeCombinations:
             "category3": "c",
         }
 
-        output_path = plot(
+        output_path, _ = plot(
             sample_categorical_data,
             dtypes,
             output_path=temp_dir,
@@ -232,7 +232,7 @@ class TestVariousDataTypeCombinations:
         data = pd.DataFrame({"single_col": [1, 2, 3, 4, 5]})
         dtypes = {"single_col": "n"}
 
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
@@ -255,7 +255,7 @@ class TestVariousDataTypeCombinations:
         data = pd.DataFrame({"single_cat": ["A", "B", "C", "A", "B"]})
         dtypes = {"single_cat": "c"}
 
-        output_path = plot(
+        output_path, _ = plot(
             data,
             dtypes,
             output_path=temp_dir,
@@ -290,7 +290,7 @@ class TestVariousDataTypeCombinations:
 
         # Should not crash
         try:
-            output_path = plot(
+            output_path, _ = plot(
                 data,
                 dtypes,
                 output_path=temp_dir,
@@ -320,7 +320,7 @@ class TestVariousDataTypeCombinations:
 
         # Should not crash
         try:
-            output_path = plot(
+            output_path, _ = plot(
                 data,
                 dtypes,
                 output_path=temp_dir,
@@ -350,7 +350,7 @@ class TestVariousDataTypeCombinations:
 
         # Should not crash even with very little data
         try:
-            output_path = plot(
+            output_path, _ = plot(
                 data,
                 dtypes,
                 output_path=temp_dir,
@@ -387,7 +387,7 @@ class TestVariousDataTypeCombinations:
                     category=UserWarning,
                     message=".*Glyph.*missing from font.*",
                 )
-                output_path = plot(
+                output_path, _ = plot(
                     data,
                     dtypes,
                     output_path=temp_dir,

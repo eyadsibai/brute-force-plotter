@@ -53,7 +53,7 @@ dtypes = {
 }
 
 # Create plots and save to directory
-output_dir = bfp.plot(
+output_dir, dtypes_used = bfp.plot(
     data,
     dtypes,
     output_path="./output_from_library",
@@ -64,6 +64,7 @@ output_dir = bfp.plot(
 
 print(f"✓ Plots saved to: {output_dir}")
 print(f"✓ Statistical summaries exported to: {output_dir}/statistics/")
+print(f"✓ Data types used: {dtypes_used}")
 
 # Example 3: Infer types first, then modify if needed
 print("\nExample 3: Infer types, then customize")
@@ -75,7 +76,7 @@ auto_dtypes = bfp.infer_dtypes(data)
 auto_dtypes["Age"] = "c"  # Treat age as categorical instead of numeric
 auto_dtypes["Fare"] = "c"  # Treat fare as categorical instead of numeric
 
-output_dir3 = bfp.plot(
+output_dir3, _ = bfp.plot(
     data,
     auto_dtypes,
     output_path="./output_custom",

@@ -162,6 +162,8 @@ def infer_dtypes(data, max_categorical_ratio=0.05, max_categorical_unique=50):
     type=click.Path(),
     default=None,
     help="Save inferred or used dtypes to a JSON file",
+)
+@click.option(
     "--max-rows",
     type=int,
     default=DEFAULT_MAX_ROWS,
@@ -344,9 +346,9 @@ def plot(
 
     Returns
     -------
-    dict or str
-        If dtypes was None, returns a tuple of (output_path, inferred_dtypes).
-        Otherwise, returns just the output_path where plots were saved.
+    tuple
+        A tuple of (output_path, dtypes) where output_path is the directory where
+        plots were saved and dtypes is the dictionary of data types used for plotting.
 
     Examples
     --------
@@ -361,7 +363,7 @@ def plot(
     >>>
     >>> # Manual type specification
     >>> dtypes = {'age': 'n', 'gender': 'c', 'id': 'i'}
-    >>> bfp.plot(data, dtypes, output_path='./plots')
+    >>> output_path, dtypes_used = bfp.plot(data, dtypes, output_path='./plots')
     >>>
     >>> # Show plots interactively
     >>> bfp.plot(data, dtypes, show=True)
@@ -375,11 +377,9 @@ def plot(
     global _show_plots, _save_plots
 
     # Infer dtypes if not provided
-    inferred = False
     if dtypes is None:
         logger.info("No dtypes provided, automatically inferring data types...")
         dtypes = infer_dtypes(data)
-        inferred = True
 
         # Log inferred types
         logger.info("Inferred data types:")
@@ -471,11 +471,8 @@ def plot(
         if temp_parquet and os.path.exists(temp_parquet):
             os.remove(temp_parquet)
 
-    # Return both output_path and dtypes if dtypes were inferred
-    if inferred:
-        return output_path, dtypes
-    else:
-        return output_path
+    # Always return both output_path and dtypes for consistency
+    return output_path, dtypes
 
 
 def check_and_sample_large_dataset(

@@ -55,16 +55,16 @@ dtypes = {
     'column3': 'i'   # ignore
 }
 
-# Create and save plots
-bfp.plot(data, dtypes, output_path='./plots')
+# Create and save plots (always returns tuple)
+output_path, dtypes_used = bfp.plot(data, dtypes, output_path='./plots')
 
 # Or show plots interactively
-bfp.plot(data, dtypes, show=True)
+output_path, dtypes_used = bfp.plot(data, dtypes, show=True)
 
 # Option 3: Manually infer types first, then edit if needed
 dtypes = bfp.infer_dtypes(data)
 # Edit dtypes as needed...
-bfp.plot(data, dtypes, output_path='./plots')
+output_path, dtypes_used = bfp.plot(data, dtypes, output_path='./plots')
 ```
 
 See [example/library_usage_example.py](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/library_usage_example.py) for more examples.
