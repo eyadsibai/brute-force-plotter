@@ -56,7 +56,8 @@ def infer_dtypes(data, max_categorical_ratio=0.05, max_categorical_unique=50):
             if unique_ratio > 0.95 and n_unique > max_categorical_unique:
                 inferred_dtypes[col] = "i"
             # Check if it should be categorical
-            # Use AND for the conditions: both must be true
+            # A column is categorical if it has both a small number of unique values
+            # AND low cardinality ratio to avoid misclassifying high-cardinality numeric data
             elif (
                 n_unique <= max_categorical_unique
                 and unique_ratio <= max_categorical_ratio

@@ -17,6 +17,11 @@ from ..core.config import skip_existing_plots
 
 logger = logging.getLogger(__name__)
 
+# Common patterns for latitude and longitude column names
+# Avoid single-letter patterns to prevent false positives
+LAT_PATTERNS = ["lat", "latitude", "y_coord", "lat_coord"]
+LON_PATTERNS = ["lon", "long", "longitude", "lng", "x_coord", "lon_coord"]
+
 __all__ = [
     "detect_geocoordinate_pairs",
     "create_map_visualization",
@@ -48,11 +53,6 @@ def detect_geocoordinate_pairs(dtypes):
     # Get columns marked as geocoordinates
     geo_cols = [col for col, dtype in dtypes.items() if dtype == "g"]
 
-    # Common patterns for latitude and longitude
-    # Avoid single-letter patterns to prevent false positives
-    lat_patterns = ["lat", "latitude", "y_coord", "lat_coord"]
-    lon_patterns = ["lon", "long", "longitude", "lng", "x_coord", "lon_coord"]
-
     # First, try to pair explicitly marked geocoordinate columns
     if len(geo_cols) >= 2:
         # Try to identify lat/lon by name patterns
@@ -63,8 +63,8 @@ def detect_geocoordinate_pairs(dtypes):
                     lon_lower = lon_col.lower()
 
                     # Check if names match common patterns
-                    is_lat = any(pattern in lat_lower for pattern in lat_patterns)
-                    is_lon = any(pattern in lon_lower for pattern in lon_patterns)
+                    is_lat = any(pattern in lat_lower for pattern in LAT_PATTERNS)
+                    is_lon = any(pattern in lon_lower for pattern in LON_PATTERNS)
 
                     if is_lat and is_lon and (lat_col, lon_col) not in geo_pairs:
                         geo_pairs.append((lat_col, lon_col))
@@ -80,8 +80,8 @@ def detect_geocoordinate_pairs(dtypes):
                 col1_lower = col1.lower()
                 col2_lower = col2.lower()
 
-                is_lat1 = any(pattern in col1_lower for pattern in lat_patterns)
-                is_lon2 = any(pattern in col2_lower for pattern in lon_patterns)
+                is_lat1 = any(pattern in col1_lower for pattern in LAT_PATTERNS)
+                is_lon2 = any(pattern in col2_lower for pattern in LON_PATTERNS)
 
                 if is_lat1 and is_lon2:
                     geo_pairs.append((col1, col2))

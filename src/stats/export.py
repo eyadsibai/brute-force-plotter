@@ -14,6 +14,25 @@ logger = logging.getLogger(__name__)
 __all__ = ["export_statistical_summaries"]
 
 
+def _calculate_missing_percentage(df, cols):
+    """
+    Calculate missing value percentage for given columns.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The data
+    cols : list
+        List of column names
+
+    Returns
+    -------
+    pandas.Series
+        Missing percentage for each column
+    """
+    return (df[cols].isnull().sum() / len(df)) * 100
+
+
 def export_statistical_summaries(input_file, dtypes, output_path):
     """
     Export statistical summaries to CSV files.
@@ -49,9 +68,9 @@ def export_statistical_summaries(input_file, dtypes, output_path):
         numeric_stats = df[numeric_cols].describe()
         # Add missing count
         numeric_stats.loc["missing"] = df[numeric_cols].isnull().sum()
-        numeric_stats.loc["missing_pct"] = (
-            df[numeric_cols].isnull().sum() / len(df)
-        ) * 100
+        numeric_stats.loc["missing_pct"] = _calculate_missing_percentage(
+            df, numeric_cols
+        )
 
         stats_file = os.path.join(stats_path, "numeric_statistics.csv")
         numeric_stats.to_csv(stats_file)
@@ -76,13 +95,12 @@ def export_statistical_summaries(input_file, dtypes, output_path):
         logger.info(f"Categorical statistics saved for {len(category_cols)} columns")
 
     # 3. Missing values analysis
+    missing_counts = [df[col].isnull().sum() for col in cols]
     missing_summary = pd.DataFrame(
         {
             "column": cols,
-            "missing_count": [df[col].isnull().sum() for col in cols],
-            "missing_percentage": [
-                (df[col].isnull().sum() / len(df)) * 100 for col in cols
-            ],
+            "missing_count": missing_counts,
+            "missing_percentage": [(count / len(df)) * 100 for count in missing_counts],
             "total_count": len(df),
             "non_missing_count": [df[col].notnull().sum() for col in cols],
         }

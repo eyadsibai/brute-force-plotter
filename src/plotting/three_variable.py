@@ -248,7 +248,12 @@ def multi_level_heatmap(data, col1, col2, col3, file_name=None):
     n_rows = (n_plots + n_cols - 1) // n_cols
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows))
-    axes = [axes] if n_plots == 1 else axes.flatten() if n_plots > 1 else [axes]
+    if n_plots == 1:
+        axes = [axes]
+    elif n_plots > 1:
+        axes = axes.flatten()
+    else:
+        axes = [axes]
 
     for idx, val in enumerate(unique_vals):
         ax = axes[idx]

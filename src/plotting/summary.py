@@ -21,6 +21,33 @@ __all__ = [
 ]
 
 
+def _validate_numeric_columns(dtypes, min_count=2):
+    """
+    Validate that there are enough numeric columns for correlation analysis.
+
+    Parameters
+    ----------
+    dtypes : dict
+        Dictionary mapping column names to data types
+    min_count : int
+        Minimum number of numeric columns required
+
+    Returns
+    -------
+    list or None
+        List of numeric column names if validation passes, None otherwise
+    """
+    numeric_cols = [col for col, dtype in dtypes.items() if dtype == "n"]
+
+    if len(numeric_cols) < min_count:
+        logger.info(
+            f"Not enough numeric columns for correlation matrix (need at least {min_count})"
+        )
+        return None
+
+    return numeric_cols
+
+
 @dask.delayed
 def plot_correlation_matrix(input_file, dtypes, path):
     """
@@ -76,13 +103,9 @@ def plot_correlation_matrix_minimal(input_file, dtypes, path):
     path : str
         Output directory path
     """
-    # Get only numeric columns
-    numeric_cols = [col for col, dtype in dtypes.items() if dtype == "n"]
-
-    if len(numeric_cols) < 2:
-        logger.info(
-            "Not enough numeric columns for correlation matrix (need at least 2)"
-        )
+    # Validate numeric columns
+    numeric_cols = _validate_numeric_columns(dtypes)
+    if numeric_cols is None:
         return
 
     # Read only numeric columns
