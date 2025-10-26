@@ -44,6 +44,7 @@ import brute_force_plotter as bfp
 # Load your data
 data = pd.read_csv('data.csv')
 
+# Define data types (c=category, n=numeric, g=geocoordinate, i=ignore)
 # Define data types (c=category, n=numeric, t=timeseries, i=ignore)
 # Option 1: Automatic type inference (NEW!)
 output_path, dtypes = bfp.plot(data)
@@ -61,6 +62,17 @@ dtypes = {
 output_path, dtypes_used = bfp.plot(data, dtypes, output_path='./plots')
 
 # Or show plots interactively
+bfp.plot(data, dtypes, show=True)
+
+# Example with geocoordinates
+geo_data = pd.read_csv('cities.csv')
+geo_dtypes = {
+    'latitude': 'g',   # geocoordinate
+    'longitude': 'g',  # geocoordinate
+    'city_type': 'c',  # category
+    'population': 'n'  # numeric
+}
+bfp.plot(geo_data, geo_dtypes, output_path='./maps')
 output_path, dtypes_used = bfp.plot(data, dtypes, show=True)
 
 # Generate minimal set of plots (reduces redundant visualizations)
@@ -199,6 +211,13 @@ bfp.plot(data, dtypes, output_path='./plots', no_sample=True)
 
 - json.dump({k:v.name for k,v in df.dtypes.to_dict().items()},open('dtypes.json','w'))  
 - the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute_force_plotter/example/titanic.csv)
+- second argument is a json file with the data types of each columns:
+  - `c` for category
+  - `n` for numeric
+  - `g` for geocoordinate (latitude/longitude) - **NEW!**
+  - `i` for ignore
+  
+  Example: [example/titanic_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json)
 - second argument is a json file with the data types of each columns (c for category, n for numeric, t for time series, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/titanic_dtypes.json)
 - the first argument is the input file (csv file with data) [example/titanic.csv](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/titanic.csv)
 - second argument is a json file with the data types of each columns (c for category, n for numeric, i for ignore) [example/titanic_dtypes.json](https://github.com/eyadsibai/brute-force-plotter/blob/master/example/titanic_dtypes.json)
@@ -221,6 +240,22 @@ bfp.plot(data, dtypes, output_path='./plots', no_sample=True)
 ```
 
 - third argument is the output directory
+
+### Geocoordinate Example
+
+For data with latitude and longitude columns:
+
+```json
+{
+  "city": "i",
+  "latitude": "g",
+  "longitude": "g",
+  "population": "n",
+  "category": "c"
+}
+```
+
+See [example/cities_geo.csv](https://github.com/eyadsibai/brute_force_plotter/example/cities_geo.csv) and [example/cities_geo_dtypes.json](https://github.com/eyadsibai/brute_force_plotter/example/cities_geo_dtypes.json) for a complete example.
 - **c** stands for category, **i** stands for ignore, **n** for numeric, **t** for time series (datetime)
 
 ## Minimal Mode
@@ -278,6 +313,13 @@ The tool automatically generates:
 - Grouped time series plots (time series + category + numeric)
   - Shows how numeric values change over time, grouped by categorical values
 
+**Map Visualizations (NEW!):**
+
+- Interactive maps for geocoordinate data (latitude/longitude)
+- Color-coded markers based on categorical variables
+- Automatic detection of lat/lon column pairs
+- Support for common naming patterns (lat, lon, latitude, longitude, x_coord, y_coord)
+
 **Statistical Summaries (with --export-stats):**
 
 - Numeric statistics (mean, std, min, max, quartiles)
@@ -295,12 +337,6 @@ The tool automatically generates:
 ![Survived vs Age](https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Survived-Age-plot.png)
 
 ![Age vs Fare](https://github.com/eyadsibai/brute_force_plotter/blob/master/example/output/2d_interactions/Age-Fare-scatter-plot.png)
-
-## TODO
-
-- target variable support
-- Support 3 variables (contour plots/ etc)
-- Map visualization (if geocoordinates)
 
 ## Testing
 
@@ -420,6 +456,7 @@ Pre-commit hooks ensure that:
 ✅ Improved logging and progress indicators
 ✅ Code cleanup and better error handling
 ✅ **Comprehensive test suite with 96% coverage**
+✅ **Interactive map visualization for geocoordinate data** (NEW!)
 ✅ **Time series support with line plots, grouped plots, and multi-series overlays**
 ✅ **Automatic data type inference** - No need to manually specify data types!
 ✅ **Comprehensive test suite with 96% coverage (81+ tests)**

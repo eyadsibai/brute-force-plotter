@@ -218,3 +218,27 @@ def titanic_dtypes():
         "Cabin": "i",
         "Name": "i",
     }
+
+
+@pytest.fixture
+def sample_geo_data():
+    """Create a DataFrame with geocoordinate data."""
+    return pd.DataFrame(
+        {
+            "latitude": [40.7128, 34.0522, 41.8781, 29.7604, 33.4484],
+            "longitude": [-74.0060, -118.2437, -87.6298, -95.3698, -112.0740],
+            "city": ["NYC", "LA", "Chicago", "Houston", "Phoenix"],
+            "population": [8000000, 4000000, 2700000, 2300000, 1600000],
+        }
+    )
+
+
+@pytest.fixture
+def geo_dtypes():
+    """Dtype mapping for geocoordinate data."""
+    return {
+        "latitude": "g",
+        "longitude": "g",
+        "city": "c",
+        "population": "n",
+    }

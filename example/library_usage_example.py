@@ -137,4 +137,83 @@ output_dir5, simple_dtypes = bfp.plot(
 print(f"✓ Simple plots saved to: {output_dir5}")
 print(f"✓ Auto-inferred types: {simple_dtypes}")
 
+# Example 4: Creating map visualizations from geocoordinate data
+print("\nExample 4: Creating interactive maps from geocoordinate data")
+
+# Create a dataset with latitude and longitude
+geo_data = pd.DataFrame(
+    {
+        "city": [
+            "New York",
+            "Los Angeles",
+            "Chicago",
+            "Houston",
+            "Phoenix",
+            "Philadelphia",
+            "San Antonio",
+            "San Diego",
+        ],
+        "latitude": [
+            40.7128,
+            34.0522,
+            41.8781,
+            29.7604,
+            33.4484,
+            39.9526,
+            29.4241,
+            32.7157,
+        ],
+        "longitude": [
+            -74.0060,
+            -118.2437,
+            -87.6298,
+            -95.3698,
+            -112.0740,
+            -75.1652,
+            -98.4936,
+            -117.1611,
+        ],
+        "population": [
+            8804190,
+            3979576,
+            2695598,
+            2325502,
+            1660272,
+            1584138,
+            1547253,
+            1423851,
+        ],
+        "size_category": [
+            "Large",
+            "Large",
+            "Large",
+            "Large",
+            "Large",
+            "Large",
+            "Medium",
+            "Medium",
+        ],
+    }
+)
+
+# Define data types with 'g' for geocoordinate columns
+geo_dtypes = {
+    "city": "i",  # ignore city names in plots
+    "latitude": "g",  # geocoordinate (latitude)
+    "longitude": "g",  # geocoordinate (longitude)
+    "population": "n",  # numeric
+    "size_category": "c",  # category
+}
+
+output_dir3 = bfp.plot(
+    geo_data,
+    geo_dtypes,
+    output_path="./geo_output",
+    show=False,
+    use_dask=False,
+)
+
+print(f"✓ Maps and plots saved to: {output_dir3}")
+print(f"✓ Interactive HTML maps saved to: {output_dir3}/maps/")
+
 print("\n✓ All examples completed successfully!")
