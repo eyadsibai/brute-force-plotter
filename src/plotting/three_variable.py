@@ -11,8 +11,8 @@ import dask
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from scipy.interpolate import griddata
+import seaborn as sns
 
 from ..core.utils import ignore_if_exist_or_save
 

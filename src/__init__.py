@@ -30,7 +30,8 @@ Basic usage:
 
 """
 
-from .brute_force_plotter import infer_dtypes, plot
+from .core.data_types import infer_dtypes
+from .library import plot
 
 __version__ = "0.1.0"
 __all__ = ["plot", "infer_dtypes"]

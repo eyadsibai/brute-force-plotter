@@ -4,8 +4,8 @@ Two-variable (2D) interaction plotting functions.
 This module handles plots showing relationships between two variables.
 """
 
-import os
 from itertools import chain
+import os
 
 import dask
 import matplotlib.pyplot as plt
