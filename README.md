@@ -61,11 +61,10 @@ dtypes = {
 output_path, dtypes_used = bfp.plot(data, dtypes, output_path='./plots')
 
 # Or show plots interactively
-bfp.plot(data, dtypes, show=True)
+output_path, dtypes_used = bfp.plot(data, dtypes, show=True)
 
 # Generate minimal set of plots (reduces redundant visualizations)
-bfp.plot(data, dtypes, output_path='./plots', minimal=True)
-output_path, dtypes_used = bfp.plot(data, dtypes, show=True)
+output_path, dtypes_used = bfp.plot(data, dtypes, output_path='./plots', minimal=True)
 
 # Option 3: Manually infer types first, then edit if needed
 dtypes = bfp.infer_dtypes(data)
