@@ -76,8 +76,7 @@ sns.set(rc={"figure.figsize": (8, 6)})
     default=False,
     help="Generate minimal set of plots (reduces redundant visualizations)",
 )
-def main(
-    input_file, dtypes, output_path, skip_existing, theme, n_workers, export_stats, minimal
+@click.option(
     "--max-rows",
     type=int,
     default=DEFAULT_MAX_ROWS,
@@ -103,6 +102,7 @@ def main(
     theme,
     n_workers,
     export_stats,
+    minimal,
     max_rows,
     sample_size,
     no_sample,
@@ -440,7 +440,7 @@ def plot_single_numeric(input_file, col, path):
     df = pd.read_parquet(input_file, columns=[col])
     file_name = os.path.join(path, f"{col}-dist-plot.png")
     data = df[col].dropna()
-    f, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
+    _, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
     histogram_violin_plots(data, axes, file_name=file_name)
 
 
@@ -449,7 +449,7 @@ def plot_single_numeric_sync(input_file, col, path):
     df = pd.read_parquet(input_file, columns=[col])
     file_name = os.path.join(path, f"{col}-dist-plot.png")
     data = df[col].dropna()
-    f, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
+    _, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
     histogram_violin_plots(data, axes, file_name=file_name)
 
     # TODO plot log transformation too?
@@ -558,7 +558,7 @@ def plot_numeric_numeric_sync(input_file, col1, col2, path):
 @dask.delayed
 def plot_category_numeric(input_file, category_col, numeric_col, path):
     df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
-    f, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
+    _, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
     axes = list(chain.from_iterable(axes))
     file_name = os.path.join(path, f"{category_col}-{numeric_col}-plot.png")
     bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
@@ -567,7 +567,7 @@ def plot_category_numeric(input_file, category_col, numeric_col, path):
 def plot_category_numeric_sync(input_file, category_col, numeric_col, path):
     """Non-delayed version for synchronous execution"""
     df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
-    f, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
+    _, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
     axes = list(chain.from_iterable(axes))
     file_name = os.path.join(path, f"{category_col}-{numeric_col}-plot.png")
     bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
@@ -577,7 +577,7 @@ def plot_category_numeric_sync(input_file, category_col, numeric_col, path):
 def plot_category_numeric_minimal(input_file, category_col, numeric_col, path):
     """Minimal version: only box and violin plots (2 plots instead of 4)"""
     df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
-    f, axes = plt.subplots(1, 2, figsize=(8, 4))
+    _, axes = plt.subplots(1, 2, figsize=(8, 4))
     file_name = os.path.join(path, f"{category_col}-{numeric_col}-minimal-plot.png")
     box_violin_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
