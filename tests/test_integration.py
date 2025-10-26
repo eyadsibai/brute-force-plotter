@@ -211,6 +211,124 @@ class TestPlotLibraryFunction:
         assert os.path.exists(os.path.join(dist_dir, "missing-values-heatmap.png"))
 
     @pytest.mark.integration
+    def test_plot_minimal_mode(self, sample_mixed_data, mixed_dtypes, temp_dir):
+        """Test that minimal mode generates fewer plots."""
+        # First, generate plots in normal mode
+        normal_dir = os.path.join(temp_dir, "normal")
+        _, _ = plot(
+            sample_mixed_data,
+            mixed_dtypes,
+            output_path=normal_dir,
+            show=False,
+            use_dask=False,
+            minimal=False,
+        )
+
+        # Then, generate plots in minimal mode
+        minimal_dir = os.path.join(temp_dir, "minimal")
+        _, _ = plot(
+            sample_mixed_data,
+            mixed_dtypes,
+            output_path=minimal_dir,
+            show=False,
+            use_dask=False,
+            minimal=True,
+        )
+
+        # Count plots in each directory
+        normal_plots = len(
+            [
+                f
+                for f in os.listdir(os.path.join(normal_dir, "distributions"))
+                if f.endswith(".png")
+            ]
+        )
+        minimal_plots = len(
+            [
+                f
+                for f in os.listdir(os.path.join(minimal_dir, "distributions"))
+                if f.endswith(".png")
+            ]
+        )
+
+        # Minimal mode should have fewer plots
+        # (at least 1 less due to Pearson correlation)
+        assert minimal_plots < normal_plots
+
+    @pytest.mark.integration
+    def test_plot_minimal_mode_correlation(
+        self, sample_mixed_data, mixed_dtypes, temp_dir
+    ):
+        """Test that minimal mode only creates Spearman correlation."""
+        _, _ = plot(
+            sample_mixed_data,
+            mixed_dtypes,
+            output_path=temp_dir,
+            show=False,
+            use_dask=False,
+            minimal=True,
+        )
+
+        dist_dir = os.path.join(temp_dir, "distributions")
+
+        # Only Spearman correlation should exist
+        assert os.path.exists(os.path.join(dist_dir, "correlation-spearman.png"))
+        assert not os.path.exists(os.path.join(dist_dir, "correlation-pearson.png"))
+
+    @pytest.mark.integration
+    def test_plot_minimal_mode_category_numeric(
+        self, sample_mixed_data, mixed_dtypes, temp_dir
+    ):
+        """Test that minimal mode creates minimal category-numeric plots."""
+        _, _ = plot(
+            sample_mixed_data,
+            mixed_dtypes,
+            output_path=temp_dir,
+            show=False,
+            use_dask=False,
+            minimal=True,
+        )
+
+        interactions_dir = os.path.join(temp_dir, "2d_interactions")
+
+        # Should have minimal plots (with -minimal- in the name)
+        assert os.path.exists(
+            os.path.join(interactions_dir, "gender-age-minimal-plot.png")
+        )
+        assert os.path.exists(
+            os.path.join(interactions_dir, "gender-income-minimal-plot.png")
+        )
+
+        # Should NOT have the full 4-plot version
+        assert not os.path.exists(os.path.join(interactions_dir, "gender-age-plot.png"))
+
+    @pytest.mark.integration
+    def test_plot_minimal_mode_category_category(
+        self, sample_mixed_data, mixed_dtypes, temp_dir
+    ):
+        """Test that minimal mode only creates heatmap for category-category."""
+        _, _ = plot(
+            sample_mixed_data,
+            mixed_dtypes,
+            output_path=temp_dir,
+            show=False,
+            use_dask=False,
+            minimal=True,
+        )
+
+        interactions_dir = os.path.join(temp_dir, "2d_interactions")
+
+        # Only heatmap should exist
+        assert os.path.exists(
+            os.path.join(interactions_dir, "education-gender-heatmap.png")
+        )
+
+        # Bar plot should NOT exist
+        assert not os.path.exists(
+            os.path.join(interactions_dir, "education-gender-bar-plot.png")
+        )
+
+    @pytest.mark.integration
     @pytest.mark.slow
     def test_plot_end_to_end_with_titanic_data(
         self, titanic_data, titanic_dtypes, temp_dir
@@ -257,7 +375,7 @@ class TestPlotLibraryFunction:
 
         dtypes = {"date": "t", "value": "n", "category": "c"}
 
-        plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
+        _, _ = plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
 
         # Check that time series plots were created
         dist_dir = os.path.join(temp_dir, "distributions")
@@ -294,7 +412,7 @@ class TestPlotLibraryFunction:
 
         dtypes = {"date1": "t", "date2": "t", "value": "n"}
 
-        plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
+        _, _ = plot(data, dtypes, output_path=temp_dir, show=False, use_dask=False)
 
         # Check that time series comparison plot was created
         interactions_dir = os.path.join(temp_dir, "2d_interactions")
@@ -480,3 +598,34 @@ class TestCLIInterface:
             pytest.skip("Dask worker initialization timing issue in CI environment")
 
         assert result.returncode == 0
+
+    @pytest.mark.integration
+    @pytest.mark.cli
+    def test_cli_with_minimal_flag(self, sample_csv_file, sample_dtypes_json, temp_dir):
+        """Test CLI with --minimal flag."""
+        import sys
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "src.brute_force_plotter",
+                sample_csv_file,
+                sample_dtypes_json,
+                temp_dir,
+                "--minimal",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+        assert result.returncode == 0
+
+        # Check that plots were created
+        dist_dir = os.path.join(temp_dir, "distributions")
+        assert os.path.exists(dist_dir)
+
+        # Verify minimal mode: only Spearman correlation, no Pearson
+        assert os.path.exists(os.path.join(dist_dir, "correlation-spearman.png"))
+        assert not os.path.exists(os.path.join(dist_dir, "correlation-pearson.png"))

@@ -157,6 +157,12 @@ def infer_dtypes(data, max_categorical_ratio=0.05, max_categorical_unique=50):
     help="Export statistical summary to CSV",
 )
 @click.option(
+    "--minimal",
+    is_flag=True,
+    default=False,
+    help="Generate minimal set of plots (reduces redundant visualizations)",
+)
+@click.option(
     "--infer-dtypes",
     "infer_types",  # Use a different parameter name
     is_flag=True,
@@ -195,6 +201,7 @@ def main(
     theme,
     n_workers,
     export_stats,
+    minimal,
     infer_types,
     save_dtypes,
     max_rows,
@@ -286,7 +293,7 @@ def main(
     cluster = LocalCluster(n_workers=n_workers, silence_logs=logging.WARNING)
     _client = Client(cluster)  # noqa: F841 - Client instance needed to enable dask cluster
 
-    plots = create_plots(new_file_name, data_types, output_path)
+    plots = create_plots(new_file_name, data_types, output_path, minimal=minimal)
     dask.compute(*plots)
 
     # Export statistical summaries if requested
@@ -314,6 +321,7 @@ def plot(
     use_dask=False,
     n_workers=4,
     export_stats=False,
+    minimal=False,
     max_rows=DEFAULT_MAX_ROWS,
     sample_size=DEFAULT_SAMPLE_SIZE,
     no_sample=False,
@@ -345,6 +353,9 @@ def plot(
         Number of workers for Dask (only used if use_dask=True). Defaults to 4.
     export_stats : bool, optional
         If True, export statistical summaries to CSV files. Defaults to False.
+    minimal : bool, optional
+        If True, generate minimal set of plots (reduces redundant visualizations).
+        Defaults to False.
     max_rows : int, optional
         Maximum number of rows before sampling is applied. Defaults to 100,000.
     sample_size : int, optional
@@ -383,6 +394,8 @@ def plot(
     >>> geo_data = pd.read_csv('cities.csv')
     >>> geo_dtypes = {'latitude': 'g', 'longitude': 'g', 'category': 'c'}
     >>> bfp.plot(geo_data, geo_dtypes, output_path='./maps')
+    >>> # Generate minimal set of plots
+    >>> bfp.plot(data, dtypes, output_path='./plots', minimal=True)
     >>> # Handle large datasets with sampling
     >>> bfp.plot(data, dtypes, output_path='./plots', max_rows=50000, sample_size=25000)
     """
@@ -449,13 +462,15 @@ def plot(
             cluster = LocalCluster(n_workers=n_workers)
             client = Client(cluster)
             try:
-                plots = create_plots(temp_parquet, dtypes, output_path)
+                plots = create_plots(temp_parquet, dtypes, output_path, minimal=minimal)
                 dask.compute(*plots)
             finally:
                 client.close()
                 cluster.close()
         else:
-            plots = create_plots(temp_parquet, dtypes, output_path, use_dask=False)
+            plots = create_plots(
+                temp_parquet, dtypes, output_path, use_dask=False, minimal=minimal
+            )
             if plots:
                 for plot_task in plots:
                     plot_task.compute()
@@ -591,7 +606,7 @@ def plot_single_numeric(input_file, col, path):
     df = pd.read_parquet(input_file, columns=[col])
     file_name = os.path.join(path, f"{col}-dist-plot.png")
     data = df[col].dropna()
-    f, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
+    _, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
     histogram_violin_plots(data, axes, file_name=file_name)
 
 
@@ -600,7 +615,7 @@ def plot_single_numeric_sync(input_file, col, path):
     df = pd.read_parquet(input_file, columns=[col])
     file_name = os.path.join(path, f"{col}-dist-plot.png")
     data = df[col].dropna()
-    f, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
+    _, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
     histogram_violin_plots(data, axes, file_name=file_name)
 
     # TODO plot log transformation too?
@@ -674,6 +689,25 @@ def plot_category_category_sync(input_file, col1, col2, path):
 
 
 @dask.delayed
+def plot_category_category_minimal(input_file, col1, col2, path):
+    """Minimal version: only heatmap (skip bar plot)"""
+    df = pd.read_parquet(input_file, columns=[col1, col2])
+    if len(df[col1].unique()) < len(df[col2].unique()):
+        col1, col2 = col2, col1
+    file_name = os.path.join(path, f"{col1}-{col2}-heatmap.png")
+    heatmap(pd.crosstab(df[col1], df[col2]), file_name=file_name)
+
+
+def plot_category_category_minimal_sync(input_file, col1, col2, path):
+    """Non-delayed minimal version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[col1, col2])
+    if len(df[col1].unique()) < len(df[col2].unique()):
+        col1, col2 = col2, col1
+    file_name = os.path.join(path, f"{col1}-{col2}-heatmap.png")
+    heatmap(pd.crosstab(df[col1], df[col2]), file_name=file_name)
+
+
+@dask.delayed
 def plot_numeric_numeric(input_file, col1, col2, path):
     df = pd.read_parquet(input_file, columns=[col1, col2])
     file_name = os.path.join(path, f"{col1}-{col2}-scatter-plot.png")
@@ -690,7 +724,7 @@ def plot_numeric_numeric_sync(input_file, col1, col2, path):
 @dask.delayed
 def plot_category_numeric(input_file, category_col, numeric_col, path):
     df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
-    f, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
+    _, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
     axes = list(chain.from_iterable(axes))
     file_name = os.path.join(path, f"{category_col}-{numeric_col}-plot.png")
     bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
@@ -699,7 +733,7 @@ def plot_category_numeric(input_file, category_col, numeric_col, path):
 def plot_category_numeric_sync(input_file, category_col, numeric_col, path):
     """Non-delayed version for synchronous execution"""
     df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
-    f, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
+    _, axes = plt.subplots(2, 2, sharex="col", sharey="row", figsize=(8, 6))
     axes = list(chain.from_iterable(axes))
     file_name = os.path.join(path, f"{category_col}-{numeric_col}-plot.png")
     bar_box_violin_dot_plots(df, category_col, numeric_col, axes, file_name=file_name)
@@ -782,6 +816,23 @@ def plot_numeric_category_category_sync(input_file, num_col, cat_col1, cat_col2,
     df = pd.read_parquet(input_file, columns=[num_col, cat_col1, cat_col2])
     file_name = os.path.join(path, f"{num_col}-{cat_col1}-{cat_col2}-grouped.png")
     grouped_bar_violin_plot(df, num_col, cat_col1, cat_col2, file_name=file_name)
+
+
+@dask.delayed
+def plot_category_numeric_minimal(input_file, category_col, numeric_col, path):
+    """Minimal version: only box and violin plots (2 plots instead of 4)"""
+    df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
+    _, axes = plt.subplots(1, 2, figsize=(8, 4))
+    file_name = os.path.join(path, f"{category_col}-{numeric_col}-minimal-plot.png")
+    box_violin_plots(df, category_col, numeric_col, axes, file_name=file_name)
+
+
+def plot_category_numeric_minimal_sync(input_file, category_col, numeric_col, path):
+    """Non-delayed minimal version for synchronous execution"""
+    df = pd.read_parquet(input_file, columns=[category_col, numeric_col])
+    _, axes = plt.subplots(1, 2, figsize=(8, 4))
+    file_name = os.path.join(path, f"{category_col}-{numeric_col}-minimal-plot.png")
+    box_violin_plots(df, category_col, numeric_col, axes, file_name=file_name)
 
 
 @dask.delayed
@@ -935,7 +986,7 @@ def plot_timeseries_category_numeric_sync(
     )
 
 
-def create_plots(input_file, dtypes, output_path, use_dask=True):
+def create_plots(input_file, dtypes, output_path, use_dask=True, minimal=False):
     distributions_path, two_d_interactions_path, three_d_interactions_path = (
         _create_directories(output_path)
     )
@@ -943,7 +994,12 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
 
     # Add summary plots
     logger.info("Adding correlation matrix and missing values plots...")
-    plots.append(plot_correlation_matrix(input_file, dtypes, distributions_path))
+    if minimal:
+        plots.append(
+            plot_correlation_matrix_minimal(input_file, dtypes, distributions_path)
+        )
+    else:
+        plots.append(plot_correlation_matrix(input_file, dtypes, distributions_path))
     plots.append(plot_missing_values(input_file, dtypes, distributions_path))
 
     for col, dtype in dtypes.items():
@@ -986,35 +1042,80 @@ def create_plots(input_file, dtypes, output_path, use_dask=True):
                     input_file, col1, col2, two_d_interactions_path
                 )
         if dtype1 == dtype2 == "c":
-            if use_dask:
-                plots.append(
-                    plot_category_category(
+            if minimal:
+                # Minimal mode: only heatmap
+                if use_dask:
+                    plots.append(
+                        plot_category_category_minimal(
+                            input_file, col1, col2, two_d_interactions_path
+                        )
+                    )
+                else:
+                    plot_category_category_minimal_sync(
                         input_file, col1, col2, two_d_interactions_path
                     )
-                )
             else:
-                plot_category_category_sync(
-                    input_file, col1, col2, two_d_interactions_path
-                )
+                # Full mode: bar plot + heatmap
+                if use_dask:
+                    plots.append(
+                        plot_category_category(
+                            input_file, col1, col2, two_d_interactions_path
+                        )
+                    )
+                else:
+                    plot_category_category_sync(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
         if dtype1 == "c" and dtype2 == "n":
-            if use_dask:
-                plots.append(
-                    plot_category_numeric(
+            if minimal:
+                # Minimal mode: only box + violin
+                if use_dask:
+                    plots.append(
+                        plot_category_numeric_minimal(
+                            input_file, col1, col2, two_d_interactions_path
+                        )
+                    )
+                else:
+                    plot_category_numeric_minimal_sync(
                         input_file, col1, col2, two_d_interactions_path
                     )
-                )
             else:
-                plot_category_numeric_sync(
-                    input_file, col1, col2, two_d_interactions_path
-                )
+                # Full mode: all 4 plots (bar, strip, box, violin)
+                if use_dask:
+                    plots.append(
+                        plot_category_numeric(
+                            input_file, col1, col2, two_d_interactions_path
+                        )
+                    )
+                else:
+                    plot_category_numeric_sync(
+                        input_file, col1, col2, two_d_interactions_path
+                    )
         if dtype1 == "n" and dtype2 == "c":
-            if use_dask:
-                plots.append(
-                    plot_category_numeric(
+            if minimal:
+                # Minimal mode: only box + violin
+                if use_dask:
+                    plots.append(
+                        plot_category_numeric_minimal(
+                            input_file, col2, col1, two_d_interactions_path
+                        )
+                    )
+                else:
+                    plot_category_numeric_minimal_sync(
                         input_file, col2, col1, two_d_interactions_path
                     )
-                )
             else:
+                # Full mode: all 4 plots (bar, strip, box, violin)
+                if use_dask:
+                    plots.append(
+                        plot_category_numeric(
+                            input_file, col2, col1, two_d_interactions_path
+                        )
+                    )
+                else:
+                    plot_category_numeric_sync(
+                        input_file, col2, col1, two_d_interactions_path
+                    )
                 plot_category_numeric_sync(
                     input_file, col2, col1, two_d_interactions_path
                 )
@@ -1368,6 +1469,26 @@ def bar_box_violin_dot_plots(data, category_col, numeric_col, axes, file_name=No
         inner="quartile",
         density_norm="count",
         ax=axes[3],
+    )
+    sns.despine(left=True)
+
+
+@ignore_if_exist_or_save
+def box_violin_plots(data, category_col, numeric_col, axes, file_name=None):
+    """Minimal version: only box and violin plots"""
+    sns.boxplot(
+        x=category_col,
+        y=numeric_col,
+        data=data[data[numeric_col].notnull()],
+        ax=axes[0],
+    )
+    sns.violinplot(
+        x=category_col,
+        y=numeric_col,
+        data=data,
+        inner="quartile",
+        density_norm="count",
+        ax=axes[1],
     )
     sns.despine(left=True)
 
@@ -1739,6 +1860,31 @@ def plot_correlation_matrix(input_file, dtypes, path):
     )
 
     # Spearman correlation
+    spearman_corr = df.corr(method="spearman")
+    file_name = os.path.join(path, "correlation-spearman.png")
+    correlation_heatmap(
+        spearman_corr, file_name=file_name, title="Spearman Correlation Matrix"
+    )
+
+
+@dask.delayed
+def plot_correlation_matrix_minimal(input_file, dtypes, path):
+    """
+    Generate only Spearman correlation matrix (minimal version)
+    """
+    # Get only numeric columns
+    numeric_cols = [col for col, dtype in dtypes.items() if dtype == "n"]
+
+    if len(numeric_cols) < 2:
+        logger.info(
+            "Not enough numeric columns for correlation matrix (need at least 2)"
+        )
+        return
+
+    # Read only numeric columns
+    df = pd.read_parquet(input_file, columns=numeric_cols)
+
+    # Only Spearman correlation (more robust to outliers)
     spearman_corr = df.corr(method="spearman")
     file_name = os.path.join(path, "correlation-spearman.png")
     correlation_heatmap(
