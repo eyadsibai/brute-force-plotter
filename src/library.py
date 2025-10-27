@@ -38,6 +38,7 @@ def plot(
     max_rows=DEFAULT_MAX_ROWS,
     sample_size=DEFAULT_SAMPLE_SIZE,
     no_sample=False,
+    target=None,
 ):
     """
     Create plots from a pandas DataFrame.
@@ -75,6 +76,10 @@ def plot(
         Number of rows to sample for large datasets. Defaults to 50,000.
     no_sample : bool, optional
         If True, disable sampling for large datasets. Defaults to False.
+    target : str, optional
+        Name of the target variable for highlighting in plots. When specified,
+        plots will use the target variable for coloring/grouping where appropriate.
+        Useful for classification/regression tasks. Defaults to None.
 
     Returns
     -------
@@ -111,6 +116,9 @@ def plot(
     >>> bfp.plot(data, dtypes, output_path='./plots', minimal=True)
     >>> # Handle large datasets with sampling
     >>> bfp.plot(data, dtypes, output_path='./plots', max_rows=50000, sample_size=25000)
+    >>> # Use target variable for highlighting
+    >>> dtypes = {'age': 'n', 'gender': 'c', 'survived': 'c'}
+    >>> bfp.plot(data, dtypes, output_path='./plots', target='survived')
     """
     global _show_plots, _save_plots
 
@@ -139,6 +147,26 @@ def plot(
 
     config._show_plots = show
     config._save_plots = not show or output_path is not None
+
+    # Set target variable if provided
+    if target:
+        if target not in dtypes:
+            logger.warning(
+                f"Target variable '{target}' not found in data types. "
+                "Target highlighting will be disabled."
+            )
+            config.set_target_variable(None)
+        elif target not in data.columns:
+            logger.warning(
+                f"Target variable '{target}' not found in data. "
+                "Target highlighting will be disabled."
+            )
+            config.set_target_variable(None)
+        else:
+            logger.info(f"Using '{target}' as target variable for plot highlighting")
+            config.set_target_variable(target)
+    else:
+        config.set_target_variable(None)
 
     # Check and sample large datasets if necessary
     original_data = data

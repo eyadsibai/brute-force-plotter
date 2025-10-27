@@ -91,6 +91,12 @@ __all__ = ["main"]
     default=False,
     help="Disable sampling for large datasets (may cause memory issues)",
 )
+@click.option(
+    "--target",
+    type=str,
+    default=None,
+    help="Target variable for highlighting in plots (e.g., for classification/regression tasks)",
+)
 def main(
     input_file,
     dtypes,
@@ -105,6 +111,7 @@ def main(
     max_rows,
     sample_size,
     no_sample,
+    target,
 ):
     """Create Plots From data in input
 
@@ -166,6 +173,20 @@ def main(
             with open(save_dtypes, "w") as f:
                 json.dump(data_types, f, indent=2)
             logger.info(f"Saved data types to: {save_dtypes}")
+
+    # Set target variable if provided (after data_types is loaded)
+    if target:
+        if target not in data_types:
+            logger.warning(
+                f"Target variable '{target}' not found in data types. "
+                "Target highlighting will be disabled."
+            )
+            config.set_target_variable(None)
+        else:
+            logger.info(f"Using '{target}' as target variable for plot highlighting")
+            config.set_target_variable(target)
+    else:
+        config.set_target_variable(None)
 
     # Filter out columns with dtype "i" (ignore)
     columns_to_load = [col for col, dtype in data_types.items() if dtype != "i"]
