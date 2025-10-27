@@ -513,12 +513,12 @@ Pre-commit hooks ensure that:
 ✅ Added skip-existing-plots option
 ✅ Improved logging and progress indicators
 ✅ Code cleanup and better error handling
-✅ **Comprehensive test suite with 96% coverage**
 ✅ **Interactive map visualization for geocoordinate data**
 ✅ **Time series support with line plots, grouped plots, and multi-series overlays**
 ✅ **Automatic data type inference** - No need to manually specify data types!
 ✅ **Large dataset fallback with automatic sampling**
 ✅ **Target variable support** - Highlight your prediction target in all plots! (NEW!)
+✅ **Comprehensive test suite with 96% coverage (148 tests)**
 
 ## Contributing
 
