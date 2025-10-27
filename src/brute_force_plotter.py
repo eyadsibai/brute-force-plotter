@@ -9,6 +9,7 @@ This is the main entry point that provides backward compatibility
 while using the new modular structure.
 """
 
+import os  # noqa: F401 - Needed for backward compatibility with tests
 import sys
 from types import ModuleType
 
@@ -210,3 +211,8 @@ _wrapper.__file__ = __file__
 _wrapper.__package__ = __package__
 _wrapper.__spec__ = getattr(_current, "__spec__", None)
 sys.modules[__name__] = _wrapper
+
+
+# Allow running as a script for backward compatibility
+if __name__ == "__main__":
+    main()
