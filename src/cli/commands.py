@@ -14,6 +14,7 @@ import matplotlib
 import pandas as pd
 import seaborn as sns
 
+from ..core import config
 from ..core.config import DEFAULT_MAX_ROWS, DEFAULT_SAMPLE_SIZE
 from ..core.data_types import infer_dtypes
 from ..core.utils import check_and_sample_large_dataset
@@ -126,8 +127,7 @@ def main(
     )
 
     # Set global skip_existing flag
-    global skip_existing_plots
-    skip_existing_plots = skip_existing
+    config.skip_existing_plots = skip_existing
 
     # Apply theme
     sns.set_style(theme)

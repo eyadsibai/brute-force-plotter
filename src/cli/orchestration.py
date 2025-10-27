@@ -205,9 +205,6 @@ def create_plots(input_file, dtypes, output_path, use_dask=True, minimal=False):
                     plot_category_numeric_sync(
                         input_file, col2, col1, two_d_interactions_path
                     )
-                plot_category_numeric_sync(
-                    input_file, col2, col1, two_d_interactions_path
-                )
         # Time series interactions
         if dtype1 == "t" and dtype2 == "n":
             if use_dask:
