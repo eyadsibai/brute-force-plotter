@@ -10,6 +10,27 @@ import pandas as pd
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def reset_global_state():
+    """Reset global state before each test to ensure test isolation."""
+    from src import brute_force_plotter
+    from src.core import config
+
+    # Clear the ignore set before each test
+    brute_force_plotter.ignore.clear()
+    config.ignore.clear()
+
+    # Reset show/save plot settings to defaults
+    config._show_plots = False
+    config._save_plots = True
+
+    yield
+
+    # Clean up after test
+    brute_force_plotter.ignore.clear()
+    config.ignore.clear()
+
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test outputs."""
@@ -170,26 +191,6 @@ def reset_matplotlib():
 
     yield
     plt.close("all")
-
-
-@pytest.fixture(autouse=True)
-def reset_global_state():
-    """Reset global state in brute_force_plotter module."""
-    from src import brute_force_plotter
-
-    # Store original values
-    original_ignore = brute_force_plotter.ignore.copy()
-    original_skip_existing = brute_force_plotter.skip_existing_plots
-    original_show_plots = brute_force_plotter._show_plots
-    original_save_plots = brute_force_plotter._save_plots
-
-    yield
-
-    # Restore original values
-    brute_force_plotter.ignore = original_ignore
-    brute_force_plotter.skip_existing_plots = original_skip_existing
-    brute_force_plotter._show_plots = original_show_plots
-    brute_force_plotter._save_plots = original_save_plots
 
 
 @pytest.fixture

@@ -12,6 +12,7 @@ import dask
 import matplotlib
 
 from .cli.orchestration import create_plots
+from .core import config
 from .core.config import (
     DEFAULT_MAX_ROWS,
     DEFAULT_SAMPLE_SIZE,
@@ -136,8 +137,8 @@ def plot(
     else:
         matplotlib.use("agg")
 
-    _show_plots = show
-    _save_plots = not show or output_path is not None
+    config._show_plots = show
+    config._save_plots = not show or output_path is not None
 
     # Check and sample large datasets if necessary
     original_data = data
