@@ -122,7 +122,9 @@ class TestTargetVariableSupport:
         assert os.path.exists(os.path.join(temp_dir, "distributions"))
 
     @pytest.mark.integration
-    def test_target_variable_config_set(self, classification_data, dtypes_classification):
+    def test_target_variable_config_set(
+        self, classification_data, dtypes_classification
+    ):
         """Test that target variable is properly set in config."""
         # Reset config
         config.set_target_variable(None)

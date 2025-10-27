@@ -142,12 +142,8 @@ pytest -m edge_case     # Edge case tests only
 
 ## Known Limitations and TODOs
 
-- No support for target variable highlighting
 - Categorical columns with >50 unique values are ignored
-- 3D visualizations are not implemented
-- No automatic data type inference
-- No time series support
-- No geographic visualization support
+- 3D visualizations are limited
 
 ## Code Organization and Architecture
 
