@@ -9,6 +9,9 @@ This is the main entry point that provides backward compatibility
 while using the new modular structure.
 """
 
+import sys
+from types import ModuleType
+
 # Re-export the public API from the new modules
 from .cli.commands import main
 from .cli.orchestration import create_plots
@@ -174,6 +177,36 @@ __all__ = [
 _detect_geocoordinate_pairs = detect_geocoordinate_pairs
 
 
-# Backward compatibility: expose config module attributes
-_show_plots = config._show_plots
-_save_plots = config._save_plots
+# Custom module wrapper to properly handle _show_plots and _save_plots for backward compatibility
+class _BruteForcePlotterModuleWrapper(ModuleType):
+    """Module wrapper that syncs _show_plots and _save_plots with config module."""
+
+    def __setattr__(self, name, value):
+        if name == "_save_plots":
+            config._save_plots = value
+            self.__dict__[name] = value
+        elif name == "_show_plots":
+            config._show_plots = value
+            self.__dict__[name] = value
+        else:
+            self.__dict__[name] = value
+
+    def __getattr__(self, name):
+        if name == "_save_plots":
+            return self.__dict__.get("_save_plots", config._save_plots)
+        elif name == "_show_plots":
+            return self.__dict__.get("_show_plots", config._show_plots)
+        # Fallback to normal attribute access
+        if name in self.__dict__:
+            return self.__dict__[name]
+        raise AttributeError(f"module '{self.__name__}' has no attribute '{name}'")
+
+
+# Replace this module with the wrapper to enable proper attribute setting
+_current = sys.modules[__name__]
+_wrapper = _BruteForcePlotterModuleWrapper(__name__)
+_wrapper.__dict__.update(_current.__dict__)
+_wrapper.__file__ = __file__
+_wrapper.__package__ = __package__
+_wrapper.__spec__ = getattr(_current, "__spec__", None)
+sys.modules[__name__] = _wrapper
