@@ -89,7 +89,7 @@ def plot_single_numeric_sync(input_file, col, path):
     if target and target != col and target in df.columns:
         # Keep both columns for grouped visualization
         data = df[[col, target]].dropna()
-        _, axes = plt.subplots(2, 1, figsize=(8, 6))
+        _, axes = plt.subplots(2, 1, sharex=True, figsize=(8, 6))
         histogram_violin_plots(data, axes, file_name=file_name, hue=target)
     else:
         # Original single-variable plot
