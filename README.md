@@ -518,7 +518,7 @@ Pre-commit hooks ensure that:
 ✅ **Automatic data type inference** - No need to manually specify data types!
 ✅ **Large dataset fallback with automatic sampling**
 ✅ **Target variable support** - Highlight your prediction target in all plots! (NEW!)
-✅ **Comprehensive test suite with 96% coverage (148 tests)**
+✅ **Comprehensive test suite with 96% coverage (143 tests)**
 
 ## Contributing
 
