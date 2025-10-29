@@ -230,3 +230,49 @@ The CI pipeline runs these checks automatically:
 - Pytest tests
 
 **Note:** PRs that fail linting or formatting checks will not be merged. Always run ruff locally before pushing.
+
+## CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+**CI Workflow (`.github/workflows/python-package.yml`):**
+Runs on every push to `master` and on all pull requests:
+1. Sets up Python 3.12
+2. Installs dependencies with `uv sync --all-extras`
+3. Runs linting with `uv run ruff check .`
+4. Runs format check with `uv run ruff format --check .`
+5. Runs tests with `uv run pytest`
+
+**Publishing Workflow (`.github/workflows/python-publish.yml`):**
+Automatically publishes to PyPI when a release is created.
+
+**Important:** All code changes must pass CI checks (linting, formatting, and tests) before they can be merged.
+
+## Task Suitability for Copilot
+
+**✅ Good Tasks for Copilot:**
+- Adding new plot types or visualizations
+- Improving test coverage for existing features
+- Adding data type inference improvements
+- Documentation updates and examples
+- Bug fixes in plotting or data processing logic
+- Adding new CLI options or configuration parameters
+- Performance optimizations with clear objectives
+
+**❌ Tasks Better Done by Humans:**
+- Major architectural refactoring across multiple modules
+- Changes to core Dask parallel processing logic
+- Security-sensitive changes or authentication logic
+- Changes requiring deep matplotlib/seaborn expertise
+- Ambiguous feature requests without clear requirements
+- Breaking changes to public API without migration plan
+
+## Security Considerations
+
+When making code changes:
+- Never commit secrets, API keys, or credentials to the repository
+- Be cautious with file path handling to prevent path traversal vulnerabilities
+- Validate user inputs from CLI arguments and file contents
+- Use latest versions of dependencies to avoid known vulnerabilities
+- When adding new dependencies, check for security advisories
+- Sanitize data before using it in file names or paths
