@@ -162,3 +162,46 @@ def check_and_sample_large_dataset(
     )
 
     return sampled_data, True
+
+
+def validate_target_variable(target, dtypes, data=None):
+    """
+    Validate that the target variable exists in data types and optionally in data.
+
+    Parameters
+    ----------
+    target : str or None
+        Name of the target variable
+    dtypes : dict
+        Dictionary mapping column names to data types
+    data : pandas.DataFrame, optional
+        DataFrame to check if target column exists in actual data
+
+    Returns
+    -------
+    bool
+        True if target is valid or None, False otherwise
+
+    Notes
+    -----
+    Logs warnings when target is invalid and provides helpful messages.
+    """
+    if not target:
+        return True
+
+    if target not in dtypes:
+        logger.warning(
+            f"Target variable '{target}' not found in data types. "
+            "Target highlighting will be disabled."
+        )
+        return False
+
+    if data is not None and target not in data.columns:
+        logger.warning(
+            f"Target variable '{target}' not found in data. "
+            "Target highlighting will be disabled."
+        )
+        return False
+
+    logger.info(f"Using '{target}' as target variable for plot highlighting")
+    return True

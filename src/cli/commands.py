@@ -17,7 +17,7 @@ import seaborn as sns
 from ..core import config
 from ..core.config import DEFAULT_MAX_ROWS, DEFAULT_SAMPLE_SIZE
 from ..core.data_types import infer_dtypes
-from ..core.utils import check_and_sample_large_dataset
+from ..core.utils import check_and_sample_large_dataset, validate_target_variable
 from ..stats.export import export_statistical_summaries
 from .orchestration import create_plots
 
@@ -175,16 +175,8 @@ def main(
             logger.info(f"Saved data types to: {save_dtypes}")
 
     # Set target variable if provided (after data_types is loaded)
-    if target:
-        if target not in data_types:
-            logger.warning(
-                f"Target variable '{target}' not found in data types. "
-                "Target highlighting will be disabled."
-            )
-            config.set_target_variable(None)
-        else:
-            logger.info(f"Using '{target}' as target variable for plot highlighting")
-            config.set_target_variable(target)
+    if validate_target_variable(target, data_types):
+        config.set_target_variable(target)
     else:
         config.set_target_variable(None)
 

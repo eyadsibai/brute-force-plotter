@@ -18,7 +18,7 @@ from .core.config import (
     DEFAULT_SAMPLE_SIZE,
 )
 from .core.data_types import infer_dtypes
-from .core.utils import check_and_sample_large_dataset
+from .core.utils import check_and_sample_large_dataset, validate_target_variable
 from .stats.export import export_statistical_summaries
 
 logger = logging.getLogger(__name__)
@@ -149,22 +149,8 @@ def plot(
     config._save_plots = not show or output_path is not None
 
     # Set target variable if provided
-    if target:
-        if target not in dtypes:
-            logger.warning(
-                f"Target variable '{target}' not found in data types. "
-                "Target highlighting will be disabled."
-            )
-            config.set_target_variable(None)
-        elif target not in data.columns:
-            logger.warning(
-                f"Target variable '{target}' not found in data. "
-                "Target highlighting will be disabled."
-            )
-            config.set_target_variable(None)
-        else:
-            logger.info(f"Using '{target}' as target variable for plot highlighting")
-            config.set_target_variable(target)
+    if validate_target_variable(target, dtypes, data):
+        config.set_target_variable(target)
     else:
         config.set_target_variable(None)
 
