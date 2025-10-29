@@ -145,9 +145,21 @@ def plot_numeric_numeric(input_file, col1, col2, path):
     path : str
         Output directory path
     """
-    df = pd.read_parquet(input_file, columns=[col1, col2])
+    from ..core.config import get_target_variable
+
+    target = get_target_variable()
+
+    # Load columns including target if available
+    columns = [col1, col2]
+    if target and target not in columns:
+        columns.append(target)
+
+    df = pd.read_parquet(input_file, columns=columns)
     file_name = os.path.join(path, f"{col1}-{col2}-scatter-plot.png")
-    scatter_plot(df, col1, col2, file_name=file_name)
+
+    # Use target for coloring if available and not one of the axes
+    hue = target if target and target not in [col1, col2] else None
+    scatter_plot(df, col1, col2, file_name=file_name, hue=hue)
 
 
 def plot_numeric_numeric_sync(input_file, col1, col2, path):
@@ -165,9 +177,21 @@ def plot_numeric_numeric_sync(input_file, col1, col2, path):
     path : str
         Output directory path
     """
-    df = pd.read_parquet(input_file, columns=[col1, col2])
+    from ..core.config import get_target_variable
+
+    target = get_target_variable()
+
+    # Load columns including target if available
+    columns = [col1, col2]
+    if target and target not in columns:
+        columns.append(target)
+
+    df = pd.read_parquet(input_file, columns=columns)
     file_name = os.path.join(path, f"{col1}-{col2}-scatter-plot.png")
-    scatter_plot(df, col1, col2, file_name=file_name)
+
+    # Use target for coloring if available and not one of the axes
+    hue = target if target and target not in [col1, col2] else None
+    scatter_plot(df, col1, col2, file_name=file_name, hue=hue)
 
 
 @dask.delayed

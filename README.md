@@ -121,6 +121,7 @@ $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json exa
 - `--max-rows`: Maximum number of rows before sampling is applied (default: 100,000)
 - `--sample-size`: Number of rows to sample for large datasets (default: 50,000)
 - `--no-sample`: Disable sampling for large datasets (may cause memory issues)
+- `--target COLUMN`: Specify a target variable for highlighting in plots (NEW!)
 
 **Using UV:**
 
@@ -129,8 +130,65 @@ $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json exa
 
 # Generate minimal set of plots (fewer redundant visualizations)
 $ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output --minimal
+
+# Use target variable for highlighting (great for ML tasks!)
+$ uv run brute-force-plotter example/titanic.csv example/titanic_dtypes.json example/output --target Survived
+
 $ uv run brute-force-plotter example/titanic.csv example/output --infer-dtypes --save-dtypes example/auto_dtypes.json --theme whitegrid --n-workers 8 --export-stats
 ```
+
+
+## Target Variable Support (NEW!)
+
+The target variable feature allows you to specify a column (e.g., the outcome you're trying to predict in a machine learning task) that will be highlighted throughout your visualizations. This makes it easier to understand relationships between features and the target variable.
+
+**What Gets Highlighted:**
+- **Scatter Plots (Numeric vs Numeric):** Points are colored by the target variable
+- **Distribution Plots (Single Numeric):** Histograms and violin plots are grouped by target
+- **Bar Plots (Single Categorical):** Bars are grouped/colored by target
+
+**CLI Usage:**
+
+```bash
+# Specify target variable for a classification task
+$ python3 -m src example/titanic.csv example/titanic_dtypes.json example/output --target Survived
+
+# Combine with other options
+$ python3 -m src data.csv dtypes.json output --target label --minimal --export-stats
+```
+
+**Library Usage:**
+
+```python
+import pandas as pd
+import brute_force_plotter as bfp
+
+# Load your data
+data = pd.read_csv('data.csv')
+
+# Define data types (the target can be categorical or numeric)
+dtypes = {
+    'age': 'n',
+    'income': 'n', 
+    'gender': 'c',
+    'survived': 'c'  # target variable
+}
+
+# Generate plots with target highlighting
+bfp.plot(data, dtypes, output_path='./plots', target='survived')
+```
+
+**Visual Comparison:**
+
+![Target Variable Support](https://github.com/user-attachments/assets/49be3d5c-87f9-447e-868e-732fe50bb894)
+
+The scatter plot shows Age vs Fare from the Titanic dataset. The left shows the traditional plot without target highlighting. The right shows the same data colored by the 'Survived' target variable, making it much easier to see patterns and relationships.
+
+**Benefits:**
+- ✅ Better insights into feature-target relationships
+- ✅ Automatic coloring in all relevant plots
+- ✅ Works with both categorical and numeric targets
+- ✅ Backward compatible (target parameter is optional)
 
 
 ## Large Dataset Handling
@@ -455,12 +513,12 @@ Pre-commit hooks ensure that:
 ✅ Added skip-existing-plots option
 ✅ Improved logging and progress indicators
 ✅ Code cleanup and better error handling
-✅ **Comprehensive test suite with 96% coverage**
-✅ **Interactive map visualization for geocoordinate data** (NEW!)
+✅ **Interactive map visualization for geocoordinate data**
 ✅ **Time series support with line plots, grouped plots, and multi-series overlays**
 ✅ **Automatic data type inference** - No need to manually specify data types!
-✅ **Comprehensive test suite with 96% coverage (81+ tests)**
 ✅ **Large dataset fallback with automatic sampling**
+✅ **Target variable support** - Highlight your prediction target in all plots! (NEW!)
+✅ **Comprehensive test suite with 96% coverage (143 tests)**
 
 ## Contributing
 

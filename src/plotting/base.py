@@ -5,6 +5,7 @@ This module contains common plotting utilities used across all plot types.
 """
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 
 from ..core.utils import autolabel, ignore_if_exist_or_save
@@ -22,22 +23,41 @@ __all__ = [
 
 
 @ignore_if_exist_or_save
-def histogram_violin_plots(data, axes, file_name=None):
+def histogram_violin_plots(data, axes, file_name=None, hue=None):
     """
     Create histogram with KDE and violin plot for numeric data.
 
     Parameters
     ----------
-    data : pandas.Series
-        Numeric data to plot
+    data : pandas.Series or pandas.DataFrame
+        Numeric data to plot (Series) or DataFrame with x and hue columns
     axes : list of matplotlib.axes.Axes
         Two axes for histogram and violin plot
     file_name : str, optional
         Output file path
+    hue : str, optional
+        Column name for grouping (if data is DataFrame)
     """
     # histogram
-    sns.histplot(data, ax=axes[0], kde=True)
-    sns.violinplot(x=data, ax=axes[1], inner="quartile", density_norm="count")
+    if hue and isinstance(data, pd.DataFrame) and hue in data.columns:
+        # Get the numeric column name (assumes data has only 2 columns: numeric and hue)
+        numeric_col = [col for col in data.columns if col != hue][0]
+        sns.histplot(data=data, x=numeric_col, hue=hue, ax=axes[0], kde=True, alpha=0.6)
+        sns.violinplot(
+            data=data,
+            x=hue,
+            y=numeric_col,
+            ax=axes[1],
+            inner="quartile",
+            density_norm="count",
+        )
+    else:
+        # Original behavior for Series or DataFrame without hue
+        if isinstance(data, pd.DataFrame):
+            # If DataFrame, assume first column is the data
+            data = data.iloc[:, 0]
+        sns.histplot(data, ax=axes[0], kde=True)
+        sns.violinplot(x=data, ax=axes[1], inner="quartile", density_norm="count")
     sns.despine(left=True)
 
 
@@ -63,7 +83,7 @@ def bar_plot(data, col, hue=None, file_name=None):
 
 
 @ignore_if_exist_or_save
-def scatter_plot(data, col1, col2, file_name=None):
+def scatter_plot(data, col1, col2, file_name=None, hue=None):
     """
     Create scatter plot for two numeric variables.
 
@@ -77,8 +97,13 @@ def scatter_plot(data, col1, col2, file_name=None):
         Second column name (y-axis)
     file_name : str, optional
         Output file path
+    hue : str, optional
+        Column name for color coding points
     """
-    sns.regplot(x=col1, y=col2, data=data, fit_reg=False)
+    if hue and hue in data.columns:
+        sns.scatterplot(x=col1, y=col2, hue=hue, data=data, alpha=0.6)
+    else:
+        sns.regplot(x=col1, y=col2, data=data, fit_reg=False)
     sns.despine(left=True)
 
 
